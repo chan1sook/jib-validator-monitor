@@ -2,14 +2,10 @@ import { app, BrowserWindow, shell, ipcMain } from "electron";
 import "colors";
 
 import { release } from "node:os";
-import fs from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import util from "node:util";
-import { execFile as _execFile, spawn } from "node:child_process";
-import { checkDockerVersion, checkExistsValidatorKeys } from "./exec";
-
-const exec = util.promisify(_execFile);
+import { checkDockerVersion, checkExistsValidatorKeys } from "./check-software";
+import { cancelGenerateKeys, generateKeys, generateKeysStatusEvent } from "./generate-keys";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,6 +22,7 @@ const __dirname = dirname(__filename);
 //
 process.env.DIST_ELECTRON = join(__dirname, "..");
 process.env.TEMP_PATH = join(process.env.DIST_ELECTRON, "../.temp");
+process.env.VCKEYGEN_PATH = join(process.env.DIST_ELECTRON, ".vc-keygen");
 process.env.VALIDATOR_KEY_PATH = join(process.env.DIST_ELECTRON, ".vc-keys");
 process.env.DIST = join(process.env.DIST_ELECTRON, "../dist");
 process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
@@ -148,188 +145,21 @@ ipcMain.on("check-validators", async (_ev, ...args) => {
   });
 });
 
-ipcMain.on("check-system", async (_ev, ...args) => {
-  const checkType = args[0] as string;
+generateKeysStatusEvent.on("status", (status) => {
+  win?.webContents.send("generateKeysStatus", status);
+});
 
-  console.log("[Check System]".blue, checkType);
-
-  switch (checkType) {
-    case "python":
-      checkPython();
-      break;
-    case "git":
-      checkGit();
-      break;
-    case "docker":
-      checkDocker();
-      break;
-    default:
-      console.error("System not found".red);
-      win?.webContents.send("check-system-response", {
-        err: "Type invalid",
-        type: checkType,
-        result: "Error",
-      });
+ipcMain.on("generateKeys", async (_ev, ...args) => {
+  const [ vcQty, withdrawAddress, keyPassword ] = args as [number, string, string];
+  try {
+    const response = await generateKeys(vcQty, withdrawAddress, keyPassword);
+    win?.webContents.send("generateKeysResponse", null, response);
+  } catch(err) {
+    console.error(err);
+    win?.webContents.send("generateKeysResponse", err.message);
   }
 });
 
-// process.env.TEMP_PATH
-function getPythonExec() {
-  return process.platform === "win32" ? "python" : "python3";
-}
-
-async function checkPython() {
-  try {
-    const { stdout, stderr } = await exec(getPythonExec(), ["--version"]);
-
-    const result = /^Python ([0-9\.]+)/.exec(stdout);
-    if (result) {
-      win?.webContents.send("check-system-response", {
-        err: null,
-        type: "python",
-        result: result[1] || "?",
-      });
-    } else {
-      throw new Error("Not found");
-    }
-  } catch (err) {
-    console.error(err);
-
-    win?.webContents.send("check-system-response", {
-      err: err.message,
-      type: "python",
-      result: "Error",
-    });
-  }
-}
-
-async function checkDocker() {
-  try {
-    const { stdout, stderr } = await exec("docker", ["-v"]);
-    const result = /^Docker version ([0-9\.]+)/.exec(stdout);
-
-    if (result) {
-      win?.webContents.send("check-system-response", {
-        err: null,
-        type: "docker",
-        result: result[1] || "?",
-      });
-    } else {
-      throw new Error("Not found");
-    }
-  } catch (err) {
-    console.error(err);
-
-    win?.webContents.send("check-system-response", {
-      err: err.message,
-      type: "docker",
-      result: "Error",
-    });
-  }
-}
-
-async function checkGit() {
-  try {
-    const { stdout, stderr } = await exec("git", ["--version"]);
-    const result = /^git version (.+)/.exec(stdout);
-
-    if (result) {
-      win?.webContents.send("check-system-response", {
-        err: null,
-        type: "git",
-        result: result[1] || "?",
-      });
-    } else {
-      throw new Error("Not found");
-    }
-  } catch (err) {
-    console.error(err);
-
-    win?.webContents.send("check-system-response", {
-      err: err.message,
-      type: "docker",
-      result: "Error",
-    });
-  }
-}
-
-ipcMain.on("createKeys", async (_ev, ...args) => {
-  await createKeys(...args);
+ipcMain.on("generateKeysCancel", async (_ev, ...args) => {
+  cancelGenerateKeys();
 });
-
-let isCreateKeysBusy = false;
-async function createKeys(vcQty = 1, withdrawAddress = "", keyPassword = "") {
-  if (isCreateKeysBusy) {
-    return;
-  }
-
-  isCreateKeysBusy = true;
-
-  try {
-    await fs.mkdir(process.env.TEMP_PATH, { recursive: true });
-    const depositPath = join(process.env.TEMP_PATH, "deposit-cli");
-
-    await fs.rm(depositPath, {
-      recursive: true,
-      force: true,
-    });
-    console.log("[Create VC Keys]".blue, "Clone Git");
-
-    await exec("git", [
-      "clone",
-      "https://github.com/jibchain-net/deposit-cli.git",
-      ".temp/deposit-cli",
-    ]);
-
-    console.log("[Create VC Keys]".blue, "Install Dependency");
-    await exec("pip3", ["install", "-r", "requirements.txt"], {
-      cwd: depositPath,
-    });
-    await exec(getPythonExec(), ["setup.py", "install"], {
-      cwd: depositPath,
-    });
-
-    const keysPath = join(process.env.TEMP_PATH, "vc-keys");
-    await fs.mkdir(keysPath, { recursive: true });
-
-    const createKeyOptions = [
-      "new-mnemonic",
-      `--num_validators=${vcQty}`,
-      "--mnemonic_language=english",
-      "--chain=jib",
-      `--eth1_withdrawal_address=${withdrawAddress}`,
-      "--folder=../vc-keys`",
-    ];
-
-    console.log("[Create VC Keys]".blue, "Install Dependency");
-
-    const p1 = spawn("./deposit.sh", createKeyOptions, {
-      cwd: depositPath,
-      timeout: 20000,
-    });
-
-    p1.stdout.on("data", (data) => {
-      console.log(`stdout: "${data}"`);
-    });
-
-    // p1.stdin.write(`\n${keyPassword}\n`);
-    // p1.stdin.end(); // EOF
-
-    p1.on("close", (code) => {
-      console.log(`Child process exited with code ${code}.`);
-    });
-
-    // const d = new Promise((resolve, reject) => {
-    //   const p = spawn("cd .temp/deposit-cli");
-
-    //   p.on("close", (code, signal) => {
-    //     resolve({ code, signal });
-    //   });
-    // });
-    // console.log(await d);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    isCreateKeysBusy = false;
-  }
-}

@@ -9,3 +9,7 @@ declare namespace NodeJS {
     VITE_PUBLIC: string
   }
 }
+
+interface GenerateKeyResponse {
+  mnemonic: string, exportPath: string, contents: Record<string, string>,
+}

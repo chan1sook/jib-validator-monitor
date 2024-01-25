@@ -41,6 +41,8 @@
   },
   "dependencies": {
     "colors": "^1.4.0",
-    "flowbite": "^2.2.1"
+    "ethers": "^6.10.0",
+    "flowbite": "^2.2.1",
+    "sudo-prompt-alt": "^9.3.0"
   }
 }
