@@ -1,11 +1,13 @@
-import { app, BrowserWindow, shell, ipcMain } from "electron";
+import { app, BrowserWindow, shell, ipcMain, dialog } from "electron";
 import "colors";
 
 import { release } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkDockerVersion, checkExistsValidatorKeys } from "./check-software";
-import { cancelGenerateKeys, generateKeys, generateKeysStatusEvent } from "./generate-keys";
+import { checkDockerVersion } from "./check-software";
+import { generateKeys, generateKeysStatusEvent } from "./generate-keys";
+import { checkExistsValidatorKeys, readKeyFiles } from "./manage-keys";
+import { deployValidators, deployValidatorsStatusEvent } from "./deploy-vcs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,13 +23,18 @@ const __dirname = dirname(__filename);
 // │ └── index.html    > Electron-Renderer
 //
 process.env.DIST_ELECTRON = join(__dirname, "..");
-process.env.TEMP_PATH = join(process.env.DIST_ELECTRON, "../.temp");
-process.env.VCKEYGEN_PATH = join(process.env.DIST_ELECTRON, ".vc-keygen");
-process.env.VALIDATOR_KEY_PATH = join(process.env.DIST_ELECTRON, ".vc-keys");
 process.env.DIST = join(process.env.DIST_ELECTRON, "../dist");
 process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? join(process.env.DIST_ELECTRON, "../public")
   : process.env.DIST;
+process.env.VC_KEYGEN_TEMP = process.env.VITE_DEV_SERVER_URL
+  ? join(process.env.DIST_ELECTRON, ".vc-keygen")
+  : "/tmp/.vc-keygen";
+process.env.VC_KEY_PATH = process.env.VITE_DEV_SERVER_URL
+  ? join(process.env.DIST_ELECTRON, "../.config/keys")
+  : "/usr/jib-vc/keys";
+
+process.env.VALIDATOR_KEY_PATH = join(process.env.DIST_ELECTRON, ".vc-keys");
 
 // Disable GPU Acceleration for Windows 7
 if (release().startsWith("6.1")) app.disableHardwareAcceleration();
@@ -53,7 +60,7 @@ const indexHtml = join(process.env.DIST, "index.html");
 
 async function createWindow() {
   win = new BrowserWindow({
-    title: "Main window",
+    title: "JIB Validator Monitor",
     icon: join(process.env.VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
       preload,
@@ -129,19 +136,19 @@ ipcMain.handle("open-win", (_, arg) => {
   }
 });
 
-ipcMain.on("check-validators", async (_ev, ...args) => {
+ipcMain.on("checkValidators", async (_ev, ...args) => {
   // TODO actual check validators
-  const [dockerVersion, vKeys] = await Promise.all([
-    checkDockerVersion(),
-    checkExistsValidatorKeys(),
-  ]);
+  const dockerVersion = await checkDockerVersion();
 
   console.log("Docker", dockerVersion);
-  console.log("vKeys", vKeys);
-
-  win?.webContents.send("check-validators-response", {
+  
+  win?.webContents.send("checkValidatorsResponse", {
     validatorExists: false,
-    keyExists: vKeys.length > 0,
+  });
+
+  win?.webContents.send("paths", {
+    VITE_PUBLIC: process.env.VITE_PUBLIC,
+    VC_KEYGEN_TEMP: process.env.VC_KEYGEN_TEMP,
   });
 });
 
@@ -150,16 +157,27 @@ generateKeysStatusEvent.on("status", (status) => {
 });
 
 ipcMain.on("generateKeys", async (_ev, ...args) => {
-  const [ vcQty, withdrawAddress, keyPassword ] = args as [number, string, string];
+  const [vcQty, withdrawAddress, keyPassword] = args as [number, string, string];
   try {
     const response = await generateKeys(vcQty, withdrawAddress, keyPassword);
     win?.webContents.send("generateKeysResponse", null, response);
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     win?.webContents.send("generateKeysResponse", err.message);
   }
 });
 
-ipcMain.on("generateKeysCancel", async (_ev, ...args) => {
-  cancelGenerateKeys();
+deployValidatorsStatusEvent.on("status", (status) => {
+  win?.webContents.send("deployValidatorsStatus", status);
+});
+
+ipcMain.on("deployValidators", async (_ev, ...args) => {
+  // const [vcQty, withdrawAddress, keyPassword] = args as [number, string, string];
+  try {
+    const response = await deployValidators();
+    win?.webContents.send("deployValidatorsResponse", null, response);
+  } catch (err) {
+    console.error(err);
+    win?.webContents.send("deployValidatorsResponse", err.message);
+  }
 });

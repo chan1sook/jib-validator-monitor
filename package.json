@@ -1,8 +1,8 @@
 {
   "name": "jib-validator-monitor",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "dist-electron/main/index.js",
-  "description": "Really simple Electron + Vue + Vite boilerplate.",
+  "description": "JIB Validator Monitor",
   "author": "Natthawat Raocharoensinp",
   "license": "ISC",
   "private": true,

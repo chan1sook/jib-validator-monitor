@@ -7,6 +7,9 @@ declare namespace NodeJS {
     DIST: string
     /** /dist/ or /public/ */
     VITE_PUBLIC: string
+    /** extra paths */
+    VC_KEYGEN_TEMP: string
+    VC_KEY_PATH: string
   }
 }
 

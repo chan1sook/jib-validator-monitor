@@ -150,9 +150,9 @@ const lastestError = ref("");
 const fileURI: Ref<Record<string, string>> = ref({});
 
 const nodeCount = ref(1);
-const withdrawAddress = ref("0xC70Edf3aB36E0D57eFD8f412A3460D225931A110");
-const keyPassword = ref("12345678");
-const confirmKeyPassword = ref("12345678");
+const withdrawAddress = ref("");
+const keyPassword = ref("");
+const confirmKeyPassword = ref("");
 const showPassword = ref(false);
 
 const getWithdrawAddressError = computed(() => {
@@ -200,10 +200,6 @@ function generateKey() {
   window.ipcRenderer.send("generateKeys", nodeCount.value, withdrawAddress.value, keyPassword.value);
 }
 
-function cancelGenerateKeys() {
-  window.ipcRenderer.send("generateKeysCancel")
-}
-
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -232,7 +228,6 @@ function generateFileURIs(contents: Record<string, string> | undefined) {
 }
 
 function toHome() {
-  cancelGenerateKeys();
   emit('setPage', 'home');
 }
 

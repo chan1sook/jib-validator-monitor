@@ -4,37 +4,22 @@ import "colors";
 import { checkGitVersion, checkPipVersion, checkPythonVersion } from "./check-software";
 import { basicExec, getPythonCmd, sudoExec } from "./cmd-utils";
 import { spawn } from "node:child_process";
-import { join } from "node:path";
+import path from "node:path";
 import fs from "node:fs/promises";
 
 export const generateKeysStatusEvent = new Event();
 
-let cancel = false;
-
-async function awaitOrCancel<T>(a: Promise<T>) {
-  let innerCancel = false;
-
-  const result = await Promise.race([
-    a,
-    new Promise<never>((resolve, reject) => {
-      while(cancel || innerCancel) {
-        reject(new Error("User Cancel"));
-      }
-    })
-  ]);
-
-  innerCancel= true;
-
-  return result;
-}
 export async function generateKeys(qty: number, withdrawAddress: string, keyPassword: string) {
   try {
-    console.log("[generateKeys]".blue, "Check git");
+    console.log("[generateKeys]".blue, "Check Softwares");
+    generateKeysStatusEvent.emit("status", "Check Softwares")
 
-    // check git
-    const gitVersion = await awaitOrCancel(checkGitVersion());
-    const pythonVersion = await awaitOrCancel(checkPythonVersion());
-    const pipVersion = await awaitOrCancel(checkPipVersion());
+    // check softwares
+    const [gitVersion, pythonVersion, pipVersion] = await Promise.all([
+      checkGitVersion(),
+      checkPythonVersion(),
+      checkPipVersion(),
+    ]);
     console.log("[generateKeys]".blue, "Git", gitVersion);
     console.log("[generateKeys]".blue, "Python", pythonVersion);
     console.log("[generateKeys]".blue, "pip", pipVersion);
@@ -50,53 +35,52 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       sofewareNeeds.push("python3-pip");
     }
 
-    generateKeysStatusEvent.emit("status", "Check Softwares")
-
     if (sofewareNeeds.length > 0) {
       console.log("[generateKeys]".blue, "Install Softwares");
       generateKeysStatusEvent.emit("status", "Install Softwares")
 
-      await awaitOrCancel(sudoExec(`apt-get install ${sofewareNeeds.join(' ')} -y`));
+      await sudoExec(`apt-get install ${sofewareNeeds.join(' ')} -y`);
       console.log("[generateKeys]".blue, "Softwares Installed");
     }
 
     // download git & run python 3
     generateKeysStatusEvent.emit("status", "Clone Git")
     console.log("[generateKeys]".blue, "Clone Git");
-    console.log("[VCKEYGEN_PATH]".magenta, process.env.VCKEYGEN_PATH);
+    console.log("[VC_KEYGEN_TEMP]".magenta, process.env.VC_KEYGEN_TEMP);
+    
+    try {
+      await fs.rmdir(process.env.VC_KEYGEN_TEMP, {
+        recursive: true,
+      });
+    } catch(err) {
 
-    await awaitOrCancel(fs.rm(process.env.VCKEYGEN_PATH, {
-      recursive: true,
-      force: true,
-    }));
-    await awaitOrCancel(fs.mkdir(process.env.VCKEYGEN_PATH, { recursive: true, mode: "777" }));
-    await awaitOrCancel(basicExec("git", [
+    }
+    await fs.mkdir(process.env.VC_KEYGEN_TEMP, { recursive: true });
+    await basicExec("git", [
       "clone",
       "https://github.com/jibchain-net/deposit-cli.git",
-      ".",
-    ], {
-      cwd: process.env.VCKEYGEN_PATH,
-    }));
+      process.env.VC_KEYGEN_TEMP,
+    ]);
 
     generateKeysStatusEvent.emit("status", "Install Python Dependency")
     console.log("[generateKeys]".blue, "Install Python Dependency");
-    await awaitOrCancel(basicExec("pip3", [
+    await basicExec("pip3", [
       "install",
       "-r",
       "requirements.txt",
     ], {
-      cwd: process.env.VCKEYGEN_PATH,
-    }));
-    await awaitOrCancel(basicExec("pip3", [
+      cwd: process.env.VC_KEYGEN_TEMP,
+    });
+    await basicExec("pip3", [
       "install",
       ".",
     ], {
-      cwd: process.env.VCKEYGEN_PATH,
-    }));
+      cwd: process.env.VC_KEYGEN_TEMP,
+    });
 
     generateKeysStatusEvent.emit("status", "Generate Keys")
     console.log("[generateKeys]".blue, "Generate Keys");
-    const keysPath = join(process.env.VCKEYGEN_PATH, ".keys");
+    const keysPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys");
     await fs.mkdir(keysPath, { recursive: true });
 
     const genKey = new Promise<GenerateKeyResponse>((resolve, reject) => {
@@ -110,7 +94,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
         `--keystore_password=${keyPassword}`,
         '--folder=.keys',
       ], {
-        cwd: process.env.VCKEYGEN_PATH,
+        cwd: process.env.VC_KEYGEN_TEMP,
         timeout: 5 * 60 * 1000,
       })
 
@@ -161,11 +145,11 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
         if(code === 0) {
           console.log("[generateKeys]".blue, "Finalize");
           // next det files paths
-          const exportPath = join(process.env.VCKEYGEN_PATH, ".keys", "validator_keys");
+          const exportPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys", "validator_keys");
           const files = await fs.readdir(exportPath);
           const contents = {};
           for (const file of files) {
-            const str = (await fs.readFile(join(exportPath, file))).toString();
+            const str = (await fs.readFile(path.join(exportPath, file))).toString();
             contents[file] = str;
           }
           resolve({ mnemonic, contents, exportPath });
@@ -176,13 +160,8 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
 
       genKeyProcess.on("error", reject)
     });
-    // process.env.TEMP_PATH
-    return await awaitOrCancel(genKey);
+    return await genKey;
   } catch (err) {
     throw err;
   }
-}
-
-export function cancelGenerateKeys() {
-  cancel = true;
 }

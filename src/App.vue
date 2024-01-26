@@ -1,16 +1,18 @@
 <template>
   <div>
     <HomePage v-if="page === 'home'" @setPage="setPage"></HomePage>
-    <GenerateKeyPage v-else-if="page === 'generateKey'" @setPage="setPage"></GenerateKeyPage>
+    <GenerateKeysPage v-else-if="page === 'generateKeys'" @setPage="setPage"></GenerateKeysPage>
+    <DeployValidatorsPage v-else-if="page === 'deployValidators'" @setPage="setPage"></DeployValidatorsPage>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import HomePage from "./components/HomePage.vue"
-import GenerateKeyPage from "./components/GenerateKeyPage.vue"
+import GenerateKeysPage from "./components/GenerateKeysPage.vue"
+import DeployValidatorsPage from "./components/DeployValidatorsPage.vue"
 
-const page = ref("generateKey");
+const page = ref("home");
 
 function setPage(pageName: string) {
   page.value = pageName;
