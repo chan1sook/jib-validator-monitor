@@ -12,5 +12,18 @@ interface Window {
 }
 
 interface GenerateKeyResponse {
-  mnemonic: string, exportPath: string, contents: Record<string, string>,
+  mnemonic: string
+  exportPath: string
+  contents: Record<string, string>
+}
+
+interface DeployKeyAdvanceSetting {
+  graffiti: string
+  exposeLighhouseApiPort: string
+}
+
+interface DeployKeyResult {
+  imported: number | undefined
+  skipped: number | undefined
+  apiToken: string | undefined
 }

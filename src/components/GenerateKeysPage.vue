@@ -1,6 +1,6 @@
 <template>
   <div class="h-screen flex flex-col">
-    <div class="w-full flex flex-row flex-wrap px-2 py-0.5 bg-white shadow-md border-b border-gray-200">
+    <div class="w-full flex flex-row flex-wrap px-2 py-1 bg-white shadow-md border-b border-gray-200">
       <LightButton :disabled="mainBusy" @click="toHome">Back</LightButton>
       <LightButton v-if="generateResult" class="ml-auto" @click="generateResult = undefined">Generate Again</LightButton>
     </div>
@@ -52,7 +52,7 @@
                   :class="[getWithdrawAddressError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
                   placeholder="ETH Address" required :disabled="mainBusy">
               </div>
-              <p v-if="getWithdrawAddressError" class="mt-2 text-sm text-red-900 dark:text-gray-500">
+              <p v-if="getWithdrawAddressError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
                 {{ getWithdrawAddressError }}
               </p>
             </div>
@@ -63,14 +63,14 @@
               <div class="relative">
                 <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  :class="[getPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                  :class="[getKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
                   placeholder="Key Password" required :disabled="mainBusy">
                 <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
                   <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
                 </div>
               </div>
-              <p v-if="getPasswordError" class="mt-2 text-sm text-red-900 dark:text-gray-500">
-                {{ getPasswordError }}
+              <p v-if="getKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                {{ getKeyPasswordError }}
               </p>
             </div>
             <div class="w-full">
@@ -80,18 +80,19 @@
               <div class="relative">
                 <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="confirmKeyPassword"
                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  :class="[getPasswordKeyError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                  :class="[getConfirmKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
                   placeholder="Key Password" required :disabled="mainBusy">
                 <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
                   <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
                 </div>
               </div>
-              <p v-if="getPasswordKeyError" class="mt-2 text-sm text-red-900 dark:text-gray-500">
-                {{ getPasswordKeyError }}
+              <p v-if="getConfirmKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                {{ getConfirmKeyPasswordError }}
               </p>
             </div>
             <div>
-              <LightButton class="mx-auto" :disabled="mainBusy || !formValid" @click="generateKey">Generate</LightButton>
+              <LightButton class="mx-auto" :disabled="mainBusy || !isFormValid" @click="generateKey">Generate
+              </LightButton>
             </div>
           </div>
           <div v-else class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
@@ -165,7 +166,7 @@ const getWithdrawAddressError = computed(() => {
   return "";
 });
 
-const getPasswordError = computed(() => {
+const getKeyPasswordError = computed(() => {
   if (keyPassword.value === "") {
     return "Password not empty"
   }
@@ -176,7 +177,7 @@ const getPasswordError = computed(() => {
   return "";
 })
 
-const getPasswordKeyError = computed(() => {
+const getConfirmKeyPasswordError = computed(() => {
   if (confirmKeyPassword.value !== keyPassword.value) {
     return "Confirm password not match"
   }
@@ -185,19 +186,19 @@ const getPasswordKeyError = computed(() => {
 })
 
 
-const formValid = computed(() => {
-  return getWithdrawAddressError.value === "";
+const isFormValid = computed(() => {
+  return getWithdrawAddressError.value === "" && getKeyPasswordError.value === "" && getConfirmKeyPasswordError.value === "";
 })
 
 function generateKey() {
-  if (!formValid.value) {
+  if (!isFormValid.value) {
     return;
   }
 
   mainBusy.value = true;
   generateResult.value = undefined;
 
-  window.ipcRenderer.send("generateKeys", nodeCount.value, withdrawAddress.value, keyPassword.value);
+  window.ipcRenderer.send("generateKeys", nodeCount.value, withdrawAddress.value.trim(), keyPassword.value);
 }
 
 async function copyText(text: string) {

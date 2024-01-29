@@ -1,8 +1,14 @@
 <template>
   <div class="h-screen flex flex-col">
-    <div class="w-full flex flex-row flex-wrap px-2 py-0.5 bg-white shadow-md border-b border-gray-200">
-      <LightButton :disabled="mainBusy" @click="toHome">Back</LightButton>
-      <LightButton class="ml-auto" disabled>Next</LightButton>
+    <div class="w-full flex flex-row flex-wrap px-2 py-1 bg-white shadow-md border-b border-gray-200">
+      <div>
+        <LightButton v-if="inputPage === 1 || deployResult" :disabled="mainBusy" @click="toHome">Back</LightButton>
+        <LightButton v-else-if="!deployResult" :disabled="mainBusy" @click="inputPage -= 1">Prev</LightButton>
+      </div>
+      <div class="ml-auto">
+        <LightButton v-if="inputPage === 1" :disabled="!!getKeyFilesError || mainBusy" @click="inputPage += 1">Next
+        </LightButton>
+      </div>
     </div>
     <div class="flex-1 overflow-y-auto">
       <div class="px-4 py-4 flex flex-col gap-y-2 items-center">
@@ -24,26 +30,178 @@
           </h3>
         </template>
         <template v-if="!mainBusy">
-          <div class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
-            <div class="mt-2">
-              <LightButton :disabled="mainBusy" @click="selectVcKeyFiles">Select Files</LightButton>
-            </div>
-            <div class="w-full flex flex-col divide-y-2">
-              <div v-for="key of Object.keys(files)" class="py-1 w-full flex flex-row items-center gap-x-2">
-                <div class="flex-1">
-                  {{ key }}
+          <template v-if="!deployResult">
+            <div v-if="inputPage === 1" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
+              <div class="mt-2">
+                <LightButton :disabled="mainBusy" @click="selectVcKeyFiles">Select Files</LightButton>
+              </div>
+              <div class="w-full flex flex-col divide-y-2">
+                <div v-for="key of Object.keys(files)" class="py-1 w-full flex flex-row items-center gap-x-2">
+                  <div class="flex-1">
+                    {{ key }}
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                    stroke="currentColor" class="w-4 h-4 cursor-pointer" title="Remove File" @click="removeFile(key)">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                  stroke="currentColor" class="w-4 h-4 cursor-pointer" title="Remove File" @click="removeFile(key)">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
+                <div v-if="Object.keys(files).length === 0" class="italic text-center text-sm">
+                  No Files
+                </div>
               </div>
-              <div v-if="Object.keys(files).length === 0" class="italic text-center text-sm">
-                No Files
+              <p v-if="Object.keys(files).length > 0 && getKeyFilesError"
+                class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                {{ getKeyFilesError }}
+              </p>
+              <div class="mt-4">
+                <LightButton :disabled="!!getKeyFilesError" @click="inputPage += 1">Next</LightButton>
               </div>
             </div>
-            <div class="mt-4">
-              <LightButton @click="deployValidators">Deploy!</LightButton>
+            <div v-else-if="inputPage === 2" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
+              <h4 class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
+                Extra Infomation:
+              </h4>
+              <div class="w-full flex flex-col gap-y-1">
+                <div class="w-full">
+                  <label for="machine-public-ip" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                    Machine Public IP
+                  </label>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 start-0 top-0 flex items-center ps-3.5 pointer-events-none">
+                      <svg class="w-4 h-4 text-gray-500 dark:text-gray-400"
+                        :class="[getMachinePublicIpError ? 'text-red-900' : '']" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 20">
+                        <path
+                          d="M8 0a7.992 7.992 0 0 0-6.583 12.535 1 1 0 0 0 .12.183l.12.146c.112.145.227.285.326.4l5.245 6.374a1 1 0 0 0 1.545-.003l5.092-6.205c.206-.222.4-.455.578-.7l.127-.155a.934.934 0 0 0 .122-.192A8.001 8.001 0 0 0 8 0Zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
+                      </svg>
+                    </div>
+                    <input type="text" id="achine-public-ip" v-model="machinePublicIp"
+                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      :class="[getMachinePublicIpError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                      placeholder="eg xxx.xxx.xxx.xxx" required :disabled="mainBusy">
+                  </div>
+                  <p v-if="getMachinePublicIpError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                    {{ getMachinePublicIpError }}
+                  </p>
+                </div>
+                <div class="w-full">
+                  <label for="fee-recipient-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                    Fee Recipient Address
+                  </label>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 start-0 top-0 flex items-center ps-3.5 pointer-events-none">
+                      <svg class="w-4 h-4 text-gray-500 dark:text-gray-400"
+                        :class="[getFeeRecipientAddressError ? 'text-red-900' : '']" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 20">
+                        <path
+                          d="M8 0a7.992 7.992 0 0 0-6.583 12.535 1 1 0 0 0 .12.183l.12.146c.112.145.227.285.326.4l5.245 6.374a1 1 0 0 0 1.545-.003l5.092-6.205c.206-.222.4-.455.578-.7l.127-.155a.934.934 0 0 0 .122-.192A8.001 8.001 0 0 0 8 0Zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
+                      </svg>
+                    </div>
+                    <input type="text" id="fee-recipient-address" v-model="feeRecipientAddress"
+                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      :class="[getFeeRecipientAddressError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                      placeholder="ETH Address" required :disabled="mainBusy">
+                  </div>
+                  <p v-if="getFeeRecipientAddressError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                    {{ getFeeRecipientAddressError }}
+                  </p>
+                </div>
+                <div class="w-full">
+                  <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                    Key Password
+                  </label>
+                  <div class="relative">
+                    <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
+                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      :class="[getKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                      placeholder="Key Password" required :disabled="mainBusy">
+                    <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
+                      <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
+                    </div>
+                  </div>
+                  <p v-if="getKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                    {{ getKeyPasswordError }}
+                  </p>
+                </div>
+                <div class="w-full">
+                  <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                    Confrim Key Password
+                  </label>
+                  <div class="relative">
+                    <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="confirmKeyPassword"
+                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      :class="[getConfirmKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                      placeholder="Key Password" required :disabled="mainBusy">
+                    <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
+                      <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
+                    </div>
+                  </div>
+                  <p v-if="getConfirmKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                    {{ getConfirmKeyPasswordError }}
+                  </p>
+                </div>
+              </div>
+              <div class="w-full self-start">
+                <input id="advance-setting" type="checkbox" v-model="showAdvanceSetting"
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                <label for="advance-setting" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  Advance Setting
+                </label>
+              </div>
+              <template v-if="showAdvanceSetting">
+                <div class="w-full self-start">
+                  <label for="graffiti" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                    Graffiti
+                  </label>
+                  <input type="text" id="graffiti" v-model="advanceSetting.graffiti"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    placeholder="Graffiti" :disabled="mainBusy">
+                </div>
+                <div class="w-full">
+                  <label for="lighhouse-http-port" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                    Lighhouse API Port
+                  </label>
+                  <input type="text" id="vc-graffiti" v-model="advanceSetting.exposeLighhouseApiPort"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    :class="[getLighthouseApiPortError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                    placeholder="Default port is 5062" required :disabled="mainBusy">
+                  <p v-if="getLighthouseApiPortError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+                    {{ getLighthouseApiPortError }}
+                  </p>
+                  <p v-else class="mt-2 text-xs text-gray-900 dark:text-gray-500">
+                    Set Lighhouse API Port (for monitoring)
+                  </p>
+                </div>
+              </template>
+              <div class="mt-4">
+                <LightButton :disabled="!isFormValid" @click="deployValidators">Deploy!</LightButton>
+              </div>
+            </div>
+          </template>
+          <div v-else class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
+            <h4 class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
+              Deploy Successful:
+            </h4>
+            <div>
+              <div>
+                <span class="font-bold">Imported:</span> {{ deployResult.imported }}
+              </div>
+              <div>
+                <span class="font-bold">Skipped:</span> {{ deployResult.skipped }}
+              </div>
+              <div v-if="deployResult.apiToken" class="break-all">
+                <span class="font-bold">API Token:</span> {{ deployResult.apiToken }}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                  stroke="currentColor" class="w-4 h-4 cursor-pointer" title="Copy API Key"
+                  @click="copyText(deployResult.apiToken)">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+                </svg>
+
+              </div>
+            </div>
+            <div class="mt-2">
+              <LightButton class="mx-auto" @click="toHome()">Back to home</LightButton>
             </div>
           </div>
         </template>
@@ -55,23 +213,118 @@
 <script setup lang="ts">
 import LoadingContainer from "./LoadingContainer.vue"
 import LightButton from "./LightButton.vue"
+import PasswordToggler from "./PasswordToggler.vue"
 
 import { ref, onMounted, computed, Ref } from 'vue';
 import { initFlowbite } from 'flowbite'
+import { isAddress } from "ethers";
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
 }>();
 
 const mainBusy = ref(false);
+const inputPage = ref(1);
 const loadingMessage = ref("Check Dependencies...");
 const lastestError = ref("");
+const deployResult: Ref<DeployKeyResult | undefined> = ref(undefined);
 
 const files: Ref<Record<string, string>> = ref({});
-const fileValid = computed(() => {
-  // TODO ...
-  return false;
+const machinePublicIp = ref("");
+const feeRecipientAddress = ref("");
+const keyPassword = ref("");
+const confirmKeyPassword = ref("");
+const showPassword = ref(false);
+const showAdvanceSetting = ref(true);
+const advanceSetting: Ref<DeployKeyAdvanceSetting> = ref({
+  graffiti: "JBCValidatorClient",
+  exposeLighhouseApiPort: "5062",
+});
+
+const getKeyFilesError = computed(() => {
+  const keys = Object.keys(files.value)
+
+  const depositFileKey = keys.find((k) => {
+    const tokens = k.split("/");
+    const lastTokens = tokens[tokens.length - 1] || "";
+    return lastTokens.startsWith("deposit_data-") && lastTokens.endsWith(".json");
+  });
+  if (!depositFileKey) {
+    return "Missing Deposit JSON File";
+  }
+
+  const keystoreKeys = keys.filter((k) => {
+    const tokens = k.split("/");
+    const lastTokens = tokens[tokens.length - 1] || "";
+    return lastTokens.startsWith("keystore-m_") && lastTokens.endsWith(".json");
+  });
+
+  if (keystoreKeys.length === 0) {
+    return "Missing Keystore JSON File";
+  }
+  // TODO read content it
+
+  return "";
+});
+
+const getMachinePublicIpError = computed(() => {
+  if (!machinePublicIp.value) {
+    return "Required";
+  }
+  return "";
+});
+
+const getFeeRecipientAddressError = computed(() => {
+  if (!isAddress(feeRecipientAddress.value)) {
+    return "Not ETH Address";
+  }
+  if (feeRecipientAddress.value === "0x0000000000000000000000000000000000000000") {
+    return "Not Empty Address";
+  }
+  return "";
+});
+
+const getKeyPasswordError = computed(() => {
+  if (keyPassword.value === "") {
+    return "Password not empty"
+  }
+  if (keyPassword.value.length < 8) {
+    return "Password too short!"
+  }
+
+  return "";
 })
+
+const getConfirmKeyPasswordError = computed(() => {
+  if (confirmKeyPassword.value !== keyPassword.value) {
+    return "Confirm password not match"
+  }
+
+  return "";
+})
+
+const getLighthouseApiPortError = computed(() => {
+  if (advanceSetting.value.exposeLighhouseApiPort === "") {
+    return "Required"
+  }
+
+  const n = parseInt(advanceSetting.value.exposeLighhouseApiPort, 10);
+  if (!Number.isInteger(n) || n < 1024) {
+    return "Must be Intreger > 1024";
+  }
+
+  return "";
+})
+
+const isFormValid = computed(() => {
+  return getKeyFilesError.value === ""
+    && getMachinePublicIpError.value === ""
+    && getFeeRecipientAddressError.value === ""
+    && getKeyPasswordError.value === ""
+    && getConfirmKeyPasswordError.value === ""
+    && getLighthouseApiPortError.value === "";
+})
+
 
 function selectVcKeyFiles() {
   window.ipcRenderer.send("selectVcKeyFiles");
@@ -82,9 +335,29 @@ function removeFile(fileKey: string) {
 }
 
 function deployValidators() {
+  if (!isFormValid.value) {
+    return;
+  }
+
+  lastestError.value = "";
   mainBusy.value = true;
 
-  window.ipcRenderer.send("deployValidators");
+  window.ipcRenderer.send("deployValidators",
+    JSON.stringify(files.value),
+    machinePublicIp.value.trim(),
+    feeRecipientAddress.value.trim(),
+    keyPassword.value,
+    JSON.stringify(advanceSetting.value),
+  );
+}
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log('Content copied to clipboard');
+  } catch (err) {
+    console.error('Failed to copy: ', err);
+  }
 }
 
 function toHome() {
@@ -94,20 +367,29 @@ function toHome() {
 onMounted(() => {
   initFlowbite();
 
+  window.ipcRenderer.on("selectVcKeyFilesResponse", (err, ...args) => {
+    const [resError, response] = args as [Error | null, Record<string, string>];
+    if (resError) {
+      // show error
+      console.error(resError);
+    } else {
+      files.value = Object.assign({ ...files.value }, response);
+    }
+  })
+
   window.ipcRenderer.on("deployValidatorsStatus", (err, ...args) => {
     loadingMessage.value = args[0] as string;
   })
 
   window.ipcRenderer.on("deployValidatorsResponse", (err, ...args) => {
-    // const [resError, response] = args as [Error | null, GenerateKeyResponse | undefined];
-    // if (resError) {
-    //   // show error
-    //   console.error(resError);
-    //   lastestError.value = "Can't generate validator keys";
-    // } else {
-    //   generateFileURIs(response?.contents);
-    //   generateResult.value = response;
-    // }
+    const [resError, response] = args as [Error | null, DeployKeyResult | undefined];
+    if (resError) {
+      // show error
+      console.error(resError);
+      lastestError.value = "Can't deploy validators";
+    } else {
+      deployResult.value = response;
+    }
     mainBusy.value = false;
   })
 })

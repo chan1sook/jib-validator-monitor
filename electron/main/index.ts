@@ -1,13 +1,12 @@
 import { app, BrowserWindow, shell, ipcMain, dialog } from "electron";
 import "colors";
 
-import { release } from "node:os";
+import { release, homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkDockerVersion } from "./check-software";
 import { generateKeys, generateKeysStatusEvent } from "./generate-keys";
-import { checkExistsValidatorKeys, readKeyFiles } from "./manage-keys";
 import { deployValidators, deployValidatorsStatusEvent } from "./deploy-vcs";
+import { readKeyFiles } from "./manage-keys";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,14 +26,12 @@ process.env.DIST = join(process.env.DIST_ELECTRON, "../dist");
 process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
   ? join(process.env.DIST_ELECTRON, "../public")
   : process.env.DIST;
-process.env.VC_KEYGEN_TEMP = process.env.VITE_DEV_SERVER_URL
-  ? join(process.env.DIST_ELECTRON, ".vc-keygen")
-  : "/tmp/.vc-keygen";
-process.env.VC_KEY_PATH = process.env.VITE_DEV_SERVER_URL
-  ? join(process.env.DIST_ELECTRON, "../.config/keys")
-  : "/usr/jib-vc/keys";
 
-process.env.VALIDATOR_KEY_PATH = join(process.env.DIST_ELECTRON, ".vc-keys");
+const tempBasePath = process.env.VITE_DEV_SERVER_URL
+  ? join(process.env.DIST_ELECTRON, "../.temp/") : "/tmp/";
+process.env.VC_KEYGEN_TEMP = join(tempBasePath, ".vc-keygen");
+process.env.VC_INSTALL_TEMP = join(tempBasePath, ".vc-deployer");
+process.env.VC_KEYS_PATH = join(homedir(), ".jib-lighthouse");
 
 // Disable GPU Acceleration for Windows 7
 if (release().startsWith("6.1")) app.disableHardwareAcceleration();
@@ -61,16 +58,12 @@ const indexHtml = join(process.env.DIST, "index.html");
 async function createWindow() {
   win = new BrowserWindow({
     title: "JIB Validator Monitor",
-    icon: join(process.env.VITE_PUBLIC, "favicon.ico"),
+    icon: join(process.env.VITE_PUBLIC, "jbc-badge.png"),
     webPreferences: {
       preload,
-      // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
-      // nodeIntegration: true,
-
-      // Consider using contextBridge.exposeInMainWorld
-      // Read more on https://www.electronjs.org/docs/latest/tutorial/context-isolation
-      // contextIsolation: false,
+      devTools: !app.isPackaged,
     },
+    autoHideMenuBar: true,
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -138,9 +131,9 @@ ipcMain.handle("open-win", (_, arg) => {
 
 ipcMain.on("checkValidators", async (_ev, ...args) => {
   // TODO actual check validators
-  const dockerVersion = await checkDockerVersion();
+  // const dockerVersion = await checkDockerVersion();
 
-  console.log("Docker", dockerVersion);
+  // console.log("Docker", dockerVersion);
   
   win?.webContents.send("checkValidatorsResponse", {
     validatorExists: false,
@@ -149,6 +142,8 @@ ipcMain.on("checkValidators", async (_ev, ...args) => {
   win?.webContents.send("paths", {
     VITE_PUBLIC: process.env.VITE_PUBLIC,
     VC_KEYGEN_TEMP: process.env.VC_KEYGEN_TEMP,
+    VC_INSTALL_TEMP: process.env.VC_INSTALL_TEMP,
+    VC_KEYS_PATH: process.env.VC_KEYS_PATH,
   });
 });
 
@@ -167,14 +162,42 @@ ipcMain.on("generateKeys", async (_ev, ...args) => {
   }
 });
 
+ipcMain.on("selectVcKeyFiles", async (_ev, ...args) => {
+  try {
+    const files = await dialog.showOpenDialog({
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Keystore/Deposit JSON file', extensions: ['json'] },
+      ],
+    });
+
+    if(files.canceled) {
+      throw new Error("User Canceled");
+    }
+
+    const content = await readKeyFiles(files.filePaths);
+
+    win?.webContents.send("selectVcKeyFilesResponse", null, content);
+  } catch (err) {
+    console.error(err);
+    win?.webContents.send("selectVcKeyFilesResponse", err.message);
+  }
+});
+
 deployValidatorsStatusEvent.on("status", (status) => {
   win?.webContents.send("deployValidatorsStatus", status);
 });
 
 ipcMain.on("deployValidators", async (_ev, ...args) => {
-  // const [vcQty, withdrawAddress, keyPassword] = args as [number, string, string];
+  const [keyFileContent, machinePublicIp, feeRecipientAddress, keyPassword, advanceSetting] = args as [string, string, string, string, string];
   try {
-    const response = await deployValidators();
+    const response = await deployValidators(
+      JSON.parse(keyFileContent) as Record<string, string>, 
+      machinePublicIp,
+      feeRecipientAddress,
+      keyPassword, 
+      JSON.parse(advanceSetting) as DeployKeyAdvanceSetting
+    );
     win?.webContents.send("deployValidatorsResponse", null, response);
   } catch (err) {
     console.error(err);

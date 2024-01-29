@@ -1,8 +1,5 @@
 <template>
   <div class="h-screen flex flex-col">
-    <div class="w-full flex flex-row flex-wrap px-2 py-0.5 bg-white shadow-md border-b border-gray-200">
-      <LightButton disabled>Setting</LightButton>
-    </div>
     <div class="flex-1 flex flex-col overflow-y-auto">
       <div class="px-4 py-4 my-auto flex flex-col justify-center gap-y-2">
         <div>
@@ -13,9 +10,9 @@
         </h1>
         <LoadingContainer v-if="mainBusy"></LoadingContainer>
         <template v-else>
-          <h2 v-if="!validatorDeployed" class="text-center text-lg text-red-900 dark:text-red-300">
+          <!-- <h2 v-if="!validatorDeployed" class="text-center text-lg text-red-900 dark:text-red-300">
             Validator Node not found
-          </h2>
+          </h2> -->
         </template>
         <div v-if="!mainBusy" class="flex flex-col justify-center items-center gap-y-1">
           <LightButton @click="generateKeys">Generate Keys</LightButton>
@@ -31,10 +28,9 @@
           </a>
           <template v-if="validatorDeployed">
             <LightButton @click="monitorValidators" disabled>Monitor Validators</LightButton>
-            <LightButton @click="exitValdiators" disabled>Close Validators</LightButton>
           </template>
           <template v-else>
-            <LightButton @click="deployValidators" disabled>Deploy Validators</LightButton>
+            <LightButton @click="deployValidators">Deploy Validators</LightButton>
           </template>
         </div>
       </div>
@@ -70,9 +66,6 @@ function deployValidators() {
 // mockup functions
 function monitorValidators() {
 
-}
-function exitValdiators() {
-  validatorDeployed.value = false;
 }
 
 onMounted(() => {

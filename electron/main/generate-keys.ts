@@ -39,7 +39,10 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       console.log("[generateKeys]".blue, "Install Softwares");
       generateKeysStatusEvent.emit("status", "Install Softwares")
 
-      await sudoExec(`apt-get install ${sofewareNeeds.join(' ')} -y`);
+      await sudoExec(
+      `apt-get update
+      apt-get install ${sofewareNeeds.join(' ')} -y
+      `);
       console.log("[generateKeys]".blue, "Softwares Installed");
     }
 
@@ -47,12 +50,13 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     generateKeysStatusEvent.emit("status", "Clone Git")
     console.log("[generateKeys]".blue, "Clone Git");
     console.log("[VC_KEYGEN_TEMP]".magenta, process.env.VC_KEYGEN_TEMP);
-    
+
     try {
-      await fs.rmdir(process.env.VC_KEYGEN_TEMP, {
+      await fs.rm(process.env.VC_KEYGEN_TEMP, {
         recursive: true,
+        force: true,
       });
-    } catch(err) {
+    } catch (err) {
 
     }
     await fs.mkdir(process.env.VC_KEYGEN_TEMP, { recursive: true });
@@ -88,14 +92,14 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
         "--non_interactive",
         "new-mnemonic",
         `--num_validators=${qty}`,
-        '--mnemonic_language=english',
-        '--chain=jib',
+        "--mnemonic_language=english",
+        "--chain=jib",
         `--eth1_withdrawal_address=${withdrawAddress}`,
         `--keystore_password=${keyPassword}`,
-        '--folder=.keys',
+        "--folder=.keys",
       ], {
         cwd: process.env.VC_KEYGEN_TEMP,
-        timeout: 5 * 60 * 1000,
+        timeout: 60 * 60 * 1000,
       })
 
       let step = 1;
@@ -142,7 +146,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       })
 
       genKeyProcess.on("exit", async (code, signal) => {
-        if(code === 0) {
+        if (code === 0) {
           console.log("[generateKeys]".blue, "Finalize");
           // next det files paths
           const exportPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys", "validator_keys");

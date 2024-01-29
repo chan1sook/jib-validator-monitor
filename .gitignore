@@ -29,5 +29,5 @@ package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
-# dev config file
-.config/
+# dev temp file
+.temp/

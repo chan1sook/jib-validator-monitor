@@ -12,6 +12,8 @@ export default defineConfig(({ command }) => {
   const isBuild = command === 'build'
   const sourcemap = isServe || !!process.env.VSCODE_DEBUG
 
+  const ignoreFiles = ['**/.temp/**/.env'];
+
   return {
     plugins: [
       vue(),
@@ -62,11 +64,18 @@ export default defineConfig(({ command }) => {
         renderer: {},
       }),
     ],
-    server: process.env.VSCODE_DEBUG && (() => {
+    server: !!process.env.VSCODE_DEBUG ? {
+      watch: {
+        ignored: ignoreFiles
+      },
+    } : (() => {
       const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
       return {
         host: url.hostname,
         port: +url.port,
+        watch: {
+          ignored: ignoreFiles
+        },
       }
     })(),
     clearScreen: false,
