@@ -1,7 +1,7 @@
 import Event from "node:events";
 import "colors";
 
-import { checkGitVersion, checkPipVersion, checkPythonVenvExists, checkPythonVersion } from "./check-software";
+import { checkGitVersion, checkPipVersion, checkPythonVersion } from "./check-software";
 import { basicExec, getPythonCmd, sudoExec } from "./utils";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -15,16 +15,15 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     generateKeysStatusEvent.emit("status", "Check Softwares")
 
     // check softwares
-    const [gitVersion, pythonVersion, pipVersion, venvExists] = await Promise.all([
+    const [gitVersion, pythonVersion, pipVersion] = await Promise.all([
       checkGitVersion(),
       checkPythonVersion(),
       checkPipVersion(),
-      checkPythonVenvExists(),
     ]);
     console.log("[generateKeys]".blue, "Git", gitVersion);
     console.log("[generateKeys]".blue, "Python", pythonVersion);
     console.log("[generateKeys]".blue, "pip", pipVersion);
-    console.log("[generateKeys]".blue, "Python venv", venvExists);
+
 
 
     const sofewareNeeds: string[] = [];
@@ -36,9 +35,6 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     }
     if (!pipVersion) {
       sofewareNeeds.push(`${getPythonCmd()}-pip`);
-    }
-    if(!venvExists) {
-      sofewareNeeds.push(`${getPythonCmd()}-venv`);
     }
 
     if (sofewareNeeds.length > 0) {
@@ -77,24 +73,12 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
 
     await fs.mkdir(process.env.VC_KEYS_PATH, { recursive: true });
 
-    const venvPath = path.join(process.env.VC_KEYS_PATH, ".venv");
-
-    await basicExec(getPythonCmd(), [
-      "-m",
-      "venv",
-      venvPath,
-    ]);
-
-    const env = process.env;
-    env.PATH += ":" + path.join(venvPath, "bin");
-
     await basicExec("pip3", [
       "install",
       "-r",
       "requirements.txt",
     ], {
       cwd: process.env.VC_KEYGEN_TEMP,
-      env,
     });
 
     await basicExec("pip3", [
@@ -102,7 +86,6 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       ".",
     ], {
       cwd: process.env.VC_KEYGEN_TEMP,
-      env,
     });
 
     generateKeysStatusEvent.emit("status", "Generate Keys")
@@ -123,7 +106,6 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       ], {
         cwd: process.env.VC_KEYGEN_TEMP,
         timeout: 60 * 60 * 1000,
-        env,
       })
 
       let step = 1;
