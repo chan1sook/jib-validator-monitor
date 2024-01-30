@@ -40,12 +40,8 @@
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 start-0 top-0 flex items-center ps-3.5 pointer-events-none">
-                  <svg class="w-4 h-4 text-gray-500 dark:text-gray-400"
-                    :class="[getWithdrawAddressError ? 'text-red-900' : '']" aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 20">
-                    <path
-                      d="M8 0a7.992 7.992 0 0 0-6.583 12.535 1 1 0 0 0 .12.183l.12.146c.112.145.227.285.326.4l5.245 6.374a1 1 0 0 0 1.545-.003l5.092-6.205c.206-.222.4-.455.578-.7l.127-.155a.934.934 0 0 0 .122-.192A8.001 8.001 0 0 0 8 0Zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
-                  </svg>
+                  <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400"
+                    :class="[getWithdrawAddressError ? 'text-red-900' : '']" />
                 </div>
                 <input type="text" id="withdraw-address" v-model="withdrawAddress"
                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
@@ -116,11 +112,7 @@
                   {{ key }}
                 </div>
                 <a :href="fileURI[key]" :download="key" class="inline-block">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                    stroke="currentColor" class="w-4 h-4 cursor-pointer" title="Download File">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
+                  <ArrowDownTrayIcon class="w-4 h-4 cursor-pointer" title="Download File" />
                 </a>
               </div>
             </div>
@@ -135,6 +127,7 @@
 import LoadingContainer from "./LoadingContainer.vue"
 import LightButton from "./LightButton.vue"
 import PasswordToggler from "./PasswordToggler.vue"
+import { MapPinIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/solid'
 
 import { ref, onMounted, computed, Ref } from 'vue';
 import { isAddress } from "ethers"

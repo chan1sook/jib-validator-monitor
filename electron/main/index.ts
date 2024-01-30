@@ -6,7 +6,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateKeys, generateKeysStatusEvent } from "./generate-keys";
 import { deployValidators, deployValidatorsStatusEvent } from "./deploy-vcs";
-import { readKeyFiles } from "./manage-keys";
+import { getLighthouseApiToken, readKeyFiles } from "./manage-keys";
+import { checkDockerVersion, checkVcInstalled } from "./check-software";
+import { sudoExec } from "./utils";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -39,10 +41,13 @@ if (release().startsWith("6.1")) app.disableHardwareAcceleration();
 // Set application name for Windows 10+ notifications
 if (process.platform === "win32") app.setAppUserModelId(app.getName());
 
+app.setName("JIB Validator Monitor");
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
   process.exit(0);
 }
+
 
 // Remove electron security warnings
 // This warning only shows in development mode
@@ -129,17 +134,42 @@ ipcMain.handle("open-win", (_, arg) => {
   }
 });
 
-ipcMain.on("checkValidators", async (_ev, ...args) => {
-  // TODO actual check validators
-  // const dockerVersion = await checkDockerVersion();
+ipcMain.on("loadInfo", async (_ev, ...args) => {
+  const type = args[0] as string | undefined;
 
-  // console.log("Docker", dockerVersion);
+  const result: ValidatorsInfoResponse = {
+    installed: false,
+  }
   
-  win?.webContents.send("checkValidatorsResponse", {
-    validatorExists: false,
-  });
+  try {
+    if(type === 'all') {
+      const apiKeyPath = join(process.env.VC_KEYS_PATH, "vc-mount/custom/validators/api-token.txt");
+      const { stdout } = await sudoExec(`cat "${apiKeyPath}"
+        echo "\n##########"
+        docker ps
+      `);
 
-  win?.webContents.send("paths", {
+      const tokens = stdout.split("##########")
+      result.apiKey = tokens[0].trim();
+      // ps only show running
+      result.running = tokens[1].includes("jbc-validator");
+    }
+
+    const [dockerVersion, vcInstalled] = await Promise.all([
+      checkDockerVersion(),
+      checkVcInstalled(),
+    ]);
+
+    result.installed = !!dockerVersion && vcInstalled;
+  } catch(err) {
+    console.error(err);
+  }
+  
+  win?.webContents.send("loadInfoResponse", result);
+});
+
+ipcMain.on("getPaths", async (_ev, ...args) => {
+  win?.webContents.send("getPathsResponse", {
     VITE_PUBLIC: process.env.VITE_PUBLIC,
     VC_KEYGEN_TEMP: process.env.VC_KEYGEN_TEMP,
     VC_INSTALL_TEMP: process.env.VC_INSTALL_TEMP,

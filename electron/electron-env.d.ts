@@ -14,6 +14,12 @@ declare namespace NodeJS {
   }
 }
 
+interface ValidatorsInfoResponse {
+  installed: boolean
+  running?: boolean,
+  apiKey?: string | undefined
+}
+
 interface GenerateKeyResponse {
   mnemonic: string
   exportPath: string

@@ -1,4 +1,5 @@
 import sudoPrompt from 'sudo-prompt-alt';
+import path from "node:path";
 import util from "node:util";
 import { execFile as _execFile } from "node:child_process";
 
@@ -29,4 +30,8 @@ export function getLighhouseDownloadUrl() {
 
   return process.arch === 'arm64' ? "https://github.com/sigp/lighthouse/releases/download/v4.6.0/lighthouse-v4.6.0-aarch64-unknown-linux-gnu-portable.tar.gz" :
         "https://github.com/sigp/lighthouse/releases/download/v4.6.0/lighthouse-v4.6.0-x86_64-unknown-linux-gnu-portable.tar.gz";
+}
+
+export function validatorConfigPath() {
+  return path.join(process.env.VC_KEYS_PATH, "validator2.yaml");
 }

@@ -3,6 +3,7 @@
     <HomePage v-if="page === 'home'" @setPage="setPage"></HomePage>
     <GenerateKeysPage v-else-if="page === 'generateKeys'" @setPage="setPage"></GenerateKeysPage>
     <DeployValidatorsPage v-else-if="page === 'deployValidators'" @setPage="setPage"></DeployValidatorsPage>
+    <ValidatorInfo v-else-if="page === 'validatorInfo'" @setPage="setPage"></ValidatorInfo>
   </div>
 </template>
 
@@ -11,6 +12,7 @@ import { ref } from 'vue';
 import HomePage from "./components/HomePage.vue"
 import GenerateKeysPage from "./components/GenerateKeysPage.vue"
 import DeployValidatorsPage from "./components/DeployValidatorsPage.vue"
+import ValidatorInfo from "./components/ValidatorInfo.vue"
 
 const page = ref("home");
 

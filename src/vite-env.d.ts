@@ -11,6 +11,12 @@ interface Window {
   ipcRenderer: import('electron').IpcRenderer
 }
 
+interface ValidatorsInfoResponse {
+  installed: boolean
+  running?: boolean,
+  apiKey?: string | undefined
+}
+
 interface GenerateKeyResponse {
   mnemonic: string
   exportPath: string

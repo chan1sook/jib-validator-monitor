@@ -1,6 +1,6 @@
 {
   "name": "jib-validator-monitor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "dist-electron/main/index.js",
   "description": "JIB Validator Monitor",
   "author": "Natthawat Raocharoensinp",
@@ -33,6 +33,7 @@
     "vue-tsc": "^1.8.27"
   },
   "dependencies": {
+    "@heroicons/vue": "^2.1.1",
     "colors": "^1.4.0",
     "ethers": "^6.10.0",
     "flowbite": "^2.2.1",

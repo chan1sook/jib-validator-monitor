@@ -2,11 +2,12 @@ import Event from "node:events";
 import "colors";
 
 import { checkDockerVersion, checkGitVersion, } from "./check-software";
-import { basicExec, getLighhouseDownloadUrl, sudoExec } from "./cmd-utils";
+import { basicExec, getLighhouseDownloadUrl, sudoExec, validatorConfigPath } from "./utils";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs/promises";
 import stringReplaceAll from 'string-replace-all';
+import { getLighthouseApiToken } from "./manage-keys";
 export const deployValidatorsStatusEvent = new Event();
 
 export async function deployValidators(keyFileContent: Record<string, string>,
@@ -128,10 +129,9 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       `PUBLIC_BEACON_NODE="https://metrabyte-cl.jibchain.net/"\n` +
       `FEE_RECIPIENT="${feeRecipientAddress}"\n`;
 
-    await fs.writeFile(path.join(process.env.VC_INSTALL_TEMP, ".env"), envContent);
+    await fs.writeFile(path.join(process.env.VC_KEYS_PATH, ".env"), envContent);
 
     // Rewrite docker compose
-    const composePath = path.join(process.env.VC_INSTALL_TEMP, "validator2.yaml");
     const vcKeyExportPath = path.join(process.env.VC_KEYS_PATH, "vc");
     const vcKeyMountPath = path.join(process.env.VC_KEYS_PATH, "vc-mount");
     const configExportPath = path.join(process.env.VC_KEYS_PATH, "config");
@@ -159,7 +159,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       `      - --http\n` +
       `      - --http-address=0.0.0.0\n`+
       `      - --unencrypted-http-transport\n`;
-    await fs.writeFile(composePath, composeContent);
+    await fs.writeFile(validatorConfigPath(), composeContent);
 
     // Import key
     deployValidatorsStatusEvent.emit("status", "Import Keys")
@@ -240,25 +240,18 @@ export async function deployValidators(keyFileContent: Record<string, string>,
 
     const vcKeysCopyTargetPath = path.join(vcKeyMountPath, "custom");
 
-    await sudoExec(`docker compose -f "${composePath}" down
+    await sudoExec(`docker compose -f "${validatorConfigPath()}" down
     cp -rf "${path.join(process.env.VC_INSTALL_TEMP, "config")}" "${process.env.VC_KEYS_PATH}"
     mkdir -p "${vcKeysCopyTargetPath}"
     cp -rf ${vcKeyExportPath}/* "${vcKeysCopyTargetPath}"
-    docker compose -f "${composePath}" up -d
+    docker compose -f "${validatorConfigPath()}" up -d
     `);
 
     deployValidatorsStatusEvent.emit("status", "Get API Token");
     console.log("[deployValidators]".blue, "Get API Token");
 
-    try {
-      const { stdout } = await sudoExec(`cat "${path.join(vcKeysCopyTargetPath, '/validators/api-token.txt')}"`);
-      importedResult.apiToken = stdout;
-      console.log("[API Token]".green, stdout);
-    } catch (err) {
-      console.error(err);
-    }
-   
-    // console.log(composePath);
+    importedResult.apiToken = await getLighthouseApiToken();
+    console.log("[API Token]".green, importedResult.apiToken );
 
     return importedResult;
   } catch (err) {

@@ -1,4 +1,5 @@
-import { basicExec } from "./cmd-utils";
+import { basicExec, getPythonCmd, validatorConfigPath } from "./utils";
+import fs from "node:fs/promises";
 
 export async function checkDockerVersion(): Promise<string | undefined> {
   try {
@@ -32,7 +33,7 @@ export async function checkGitVersion(): Promise<string | undefined> {
 
 export async function checkPythonVersion(): Promise<string | undefined> {
   try {
-    const { stdout } = await basicExec("python3", ["--version"]);
+    const { stdout } = await basicExec(getPythonCmd(), ["--version"]);
 
     const result = /^Python ([0-9\.]+)/.exec(stdout);
     if (result) {
@@ -46,6 +47,24 @@ export async function checkPythonVersion(): Promise<string | undefined> {
     return undefined;
   }
 }
+
+export async function checkPythonVenvExists(): Promise<boolean> {
+  try {
+    const venvPackageName = `${getPythonCmd()}-venv`;
+    const { stdout } = await basicExec("apt", ["list", "--installed", venvPackageName]);
+
+    if (stdout.includes(venvPackageName)) {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (err) {
+    console.error(err);
+
+    return false;
+  }
+}
+
 
 export async function checkPipVersion(): Promise<string | undefined> {
   try {
@@ -62,4 +81,17 @@ export async function checkPipVersion(): Promise<string | undefined> {
 
     return undefined;
   }
+}
+
+export async function checkVcInstalled() {
+  try {
+    await fs.access(validatorConfigPath());
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+async function checkVcRunning() {
+  
 }

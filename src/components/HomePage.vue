@@ -8,30 +8,25 @@
         <h1 class="text-center font-bold text-2xl">
           JIB Validator Monitor
         </h1>
-        <LoadingContainer v-if="mainBusy"></LoadingContainer>
-        <template v-else>
-          <!-- <h2 v-if="!validatorDeployed" class="text-center text-lg text-red-900 dark:text-red-300">
-            Validator Node not found
-          </h2> -->
-        </template>
-        <div v-if="!mainBusy" class="flex flex-col justify-center items-center gap-y-1">
-          <LightButton @click="generateKeys">Generate Keys</LightButton>
-          <a href="https://staking.jibchain.net/en/upload-deposit-data" target="_blank">
-            <LightButton class="flex flex-row items-center gap-x-2">
-              Deposit Fund
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                stroke="currentColor" class="w-4 h-4">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-            </LightButton>
+        <div class="my-2 flex flex-row justify-center flex-wrap gap-4">
+          <HomeButton @click="generateKeys">
+            <KeyIcon class="w-8 h-8" />
+            <div class="text-sm text-center">Generate Keys</div>
+          </HomeButton>
+          <a href="https://staking.jibchain.net/en/upload-deposit-data" target="_blank" class="inline-block">
+            <HomeButton>
+              <WalletIcon class="w-8 h-8" />
+              <div class="text-sm text-center">Deposit Fund</div>
+            </HomeButton>
           </a>
-          <template v-if="validatorDeployed">
-            <LightButton @click="monitorValidators" disabled>Monitor Validators</LightButton>
-          </template>
-          <template v-else>
-            <LightButton @click="deployValidators">Deploy Validators</LightButton>
-          </template>
+          <HomeButton @click="deployValidators">
+            <ArrowDownTrayIcon class="w-8 h-8" />
+            <div class="text-sm text-center">Deploy Validators</div>
+          </HomeButton>
+          <HomeButton @click="validatorInfo">
+            <InformationCircleIcon class="w-8 h-8" />
+            <div class="text-sm text-center">Validators Info</div>
+          </HomeButton>
         </div>
       </div>
     </div>
@@ -39,21 +34,14 @@
 </template>
 
 <script setup lang="ts">
-import LoadingContainer from "./LoadingContainer.vue"
-import LightButton from "./LightButton.vue"
+import HomeButton from "./HomeButton.vue"
+import { KeyIcon, WalletIcon, ArrowDownTrayIcon, InformationCircleIcon } from '@heroicons/vue/24/solid'
 
-import { ref, onMounted } from 'vue';
+import { onMounted } from 'vue';
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
 }>();
-
-const mainBusy = ref(true);
-const validatorDeployed = ref(false);
-
-function checkValidators() {
-  window.ipcRenderer.send("checkValidators");
-}
 
 function generateKeys() {
   emit("setPage", "generateKeys");
@@ -63,24 +51,16 @@ function deployValidators() {
   emit("setPage", "deployValidators");
 }
 
-// mockup functions
-function monitorValidators() {
-
+function validatorInfo() {
+  emit("setPage", "validatorInfo");
 }
 
 onMounted(() => {
-  window.ipcRenderer.on('paths', (_event, ...args) => {
+  window.ipcRenderer.on('getPathsResponse', (_event, ...args) => {
     console.log(args[0])
   });
 
-  window.ipcRenderer.on('checkValidatorsResponse', (_event, ...args) => {
-    const response: { validatorExists: boolean } = args[0];
-
-    validatorDeployed.value = response.validatorExists;
-    mainBusy.value = false;
-  });
-
-  checkValidators();
+  window.ipcRenderer.send("getPaths");
 })
 
 </script>
