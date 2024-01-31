@@ -6,7 +6,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateKeys, generateKeysStatusEvent } from "./generate-keys";
 import { deployValidators, deployValidatorsStatusEvent } from "./deploy-vcs";
-import { getLighthouseApiToken, readKeyFiles } from "./manage-keys";
+import { getLighthouseApiData, readKeyFiles } from "./manage-keys";
 import { checkDockerVersion, checkVcInstalled } from "./check-software";
 import { sudoExec } from "./utils";
 
@@ -134,38 +134,24 @@ ipcMain.handle("open-win", (_, arg) => {
   }
 });
 
-ipcMain.on("loadInfo", async (_ev, ...args) => {
+ipcMain.on("loadLighthouseApiData", async (_ev, ...args) => {
   const type = args[0] as string | undefined;
+  let response: LighhouseApiData;
 
-  const result: ValidatorsInfoResponse = {
-    installed: false,
-  }
-  
   try {
-    if(type === 'all') {
-      const apiKeyPath = join(process.env.VC_KEYS_PATH, "vc-mount/custom/validators/api-token.txt");
-      const { stdout } = await sudoExec(`cat "${apiKeyPath}"
-        echo "\n##########"
-        docker ps
-      `);
-
-      const tokens = stdout.split("##########")
-      result.apiKey = tokens[0].trim();
-      // ps only show running
-      result.running = tokens[1].includes("jbc-validator");
-    }
-
+    // TODO use lighthouse api instend ps docker
     const [dockerVersion, vcInstalled] = await Promise.all([
       checkDockerVersion(),
-      checkVcInstalled(),
+      checkVcInstalled(), 
     ]);
-
-    result.installed = !!dockerVersion && vcInstalled;
+    if(!!dockerVersion && vcInstalled) {
+      response =  await getLighthouseApiData();
+    }
   } catch(err) {
     console.error(err);
   }
   
-  win?.webContents.send("loadInfoResponse", result);
+  win?.webContents.send("loadLighthouseApiDataResponse", response);
 });
 
 ipcMain.on("getPaths", async (_ev, ...args) => {

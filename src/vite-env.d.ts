@@ -11,12 +11,6 @@ interface Window {
   ipcRenderer: import('electron').IpcRenderer
 }
 
-interface ValidatorsInfoResponse {
-  installed: boolean
-  running?: boolean,
-  apiKey?: string | undefined
-}
-
 interface GenerateKeyResponse {
   mnemonic: string
   exportPath: string
@@ -28,8 +22,19 @@ interface DeployKeyAdvanceSetting {
   exposeLighhouseApiPort: string
 }
 
+interface LighhouseApiData {
+  apiToken: string
+  apiPort: number
+}
+
 interface DeployKeyResult {
   imported: number | undefined
   skipped: number | undefined
   apiToken: string | undefined
+}
+
+interface ValidatorData {
+  voting_pubkey: string
+  description: string
+  enabled: bool
 }

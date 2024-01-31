@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs/promises";
 import stringReplaceAll from 'string-replace-all';
-import { getLighthouseApiToken } from "./manage-keys";
+import { getLighthouseApiData } from "./manage-keys";
 export const deployValidatorsStatusEvent = new Event();
 
 export async function deployValidators(keyFileContent: Record<string, string>,
@@ -135,6 +135,12 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     const vcKeyExportPath = path.join(process.env.VC_KEYS_PATH, "vc");
     const vcKeyMountPath = path.join(process.env.VC_KEYS_PATH, "vc-mount");
     const configExportPath = path.join(process.env.VC_KEYS_PATH, "config");
+
+    let lighhouseApiPort = parseInt(advanceSetting.exposeLighhouseApiPort, 10);
+    if(!Number.isInteger(lighhouseApiPort) || lighhouseApiPort <= 1024) {
+      lighhouseApiPort = 5062;
+    }
+    
     const composeContent = `version: "3.8"\n` +
       `services:\n` +
       `  jbc-validator:\n` +
@@ -143,7 +149,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       `    user: root\n` +
       `    restart: unless-stopped\n` +
       `    ports:\n` +
-      `      - ${advanceSetting.exposeLighhouseApiPort || 5062}:5062\n` +
+      `      - ${lighhouseApiPort}:5062\n` +
       `    volumes:\n` +
       `      - ${vcKeyMountPath}:/root/.lighthouse/\n` +
       `      - ${configExportPath}:/config\n` +
@@ -158,6 +164,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       `      - --debug-level=info\n` +
       `      - --http\n` +
       `      - --http-address=0.0.0.0\n`+
+      `      - --http-allow-origin=*\n`+
       `      - --unencrypted-http-transport\n`;
     await fs.writeFile(validatorConfigPath(), composeContent);
 
@@ -250,8 +257,19 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     deployValidatorsStatusEvent.emit("status", "Get API Token");
     console.log("[deployValidators]".blue, "Get API Token");
 
-    importedResult.apiToken = await getLighthouseApiToken();
-    console.log("[API Token]".green, importedResult.apiToken );
+    // Rewrite Lighthouse API Key to rightful format
+    const apiKeyPath = path.join(vcKeyMountPath, "custom/validators/api-token.txt");
+    const { stdout : apiToken } = await sudoExec(`cat "${apiKeyPath}"`);
+    importedResult.apiToken = apiToken;
+    importedResult.apiPort = lighhouseApiPort;
+
+    const lighhouseApiData = {
+      apiToken,
+      apiPort: lighhouseApiPort,
+    }
+    
+    await fs.writeFile(path.join(process.env.VC_KEYS_PATH, "lighthouse-api-info.json"), JSON.stringify(lighhouseApiData));
+    console.log("[Lighhouse API Data]".green, lighhouseApiPort, apiToken);
 
     return importedResult;
   } catch (err) {

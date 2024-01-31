@@ -23,6 +23,8 @@
             <ArrowDownTrayIcon class="w-8 h-8" />
             <div class="text-sm text-center">Deploy Validators</div>
           </HomeButton>
+        </div>
+        <div class="my-2 flex flex-row justify-center flex-wrap gap-4">
           <HomeButton @click="validatorInfo">
             <InformationCircleIcon class="w-8 h-8" />
             <div class="text-sm text-center">Validators Info</div>

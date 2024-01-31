@@ -171,7 +171,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       genKeyProcess.on("error", reject)
     });
     const result = await genKey;
-    return genKey;
+    return result;
   } catch (err) {
     throw err;
   }
