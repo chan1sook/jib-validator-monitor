@@ -19,7 +19,7 @@
         </LoadingContainer>
         <template v-else>
           <h2 class="text-center text-lg">
-            Validator Infomation
+            Validator Information
           </h2>
           <h3 v-if="lastestError" class="text-center italic text-red-900 dark:text-red-300">
             {{ lastestError }}

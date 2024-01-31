@@ -56,7 +56,7 @@
             </div>
             <div v-else-if="inputPage === 2" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
               <h4 class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
-                Extra Infomation:
+                Extra Information:
               </h4>
               <div class="w-full flex flex-col gap-y-1">
                 <div class="w-full">
