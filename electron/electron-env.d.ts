@@ -10,6 +10,7 @@ declare namespace NodeJS {
     /** extra paths */
     VC_KEYGEN_TEMP: string
     VC_INSTALL_TEMP: string
+    VC_EXIT_TEMP: string
     VC_KEYS_PATH: string
   }
 }

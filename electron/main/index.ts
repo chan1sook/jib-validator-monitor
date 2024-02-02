@@ -33,6 +33,7 @@ const tempBasePath = process.env.VITE_DEV_SERVER_URL
   ? join(process.env.DIST_ELECTRON, "../.temp/") : "/tmp/";
 process.env.VC_KEYGEN_TEMP = join(tempBasePath, ".vc-keygen");
 process.env.VC_INSTALL_TEMP = join(tempBasePath, ".vc-deployer");
+process.env.VC_EXIT_TEMP = join(tempBasePath, ".vc-exit");
 process.env.VC_KEYS_PATH = join(homedir(), ".jib-lighthouse");
 
 // Disable GPU Acceleration for Windows 7

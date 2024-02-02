@@ -28,13 +28,22 @@
             <template v-if="lighhouseApiData">
               <LoadingContainer v-if="apiBusy"></LoadingContainer>
               <template v-else>
-                <div class="text-sm text-right px-4 py-2">
-                  <span class="font-bold">Active:</span>
-                  <span>
-                    {{ validatorList.filter((e) => e.enabled).length }}/{{
-                      validatorList.length }}
-                  </span>
+                <div class="py-2 flex flex-row items-center">
+                  <div class="text-sm flex flex-row items-center gap-x-2">
+                    <span class="transition duration-200 inline-block w-4 h-4 rounded-full bg-gray-300"
+                      :class="[isOnline ? 'bg-green-700' : 'bg-red-700']"></span>
+                    <span v-if="isOnline"> Online </span>
+                    <span v-else> Offline </span>
+                  </div>
+                  <div class="text-sm ml-auto">
+                    <span class="font-bold">Active:</span>
+                    <span>
+                      {{ validatorList.filter((e) => e.enabled).length }}/{{
+                        validatorList.length }}
+                    </span>
+                  </div>
                 </div>
+
                 <div>
                   <div class="relative">
                     <div class="absolute inset-y-0 start-0 top-0 flex items-center ps-3.5">
@@ -49,35 +58,53 @@
                   <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 bg-gray-200 dark:bg-gray-700 dark:text-gray-400">
                       <tr>
-                        <th scope="col" class="px-4 py-2">
+                        <th scope="col" class="px-4 py-2 w-10">
                           <div class="inline-flex gap-x-2">
-                            <span>Active</span>
+                            <span>Status</span>
                             <SortButton :index="0" :sorted="sortColumn === 0" :asc="sortAsc" @sort="setSortValidator">
                             </SortButton>
                           </div>
                         </th>
-                        <th scope="col" class="px-4 py-2 w-44">
+                        <th scope="col" class="px-4 py-2 w-10">
+                          <div class="inline-flex gap-x-2">
+                            <span>Online</span>
+                          </div>
+                        </th>
+                        <th scope="col" class="px-4 py-2">
                           <div class="inline-flex gap-x-2">
                             <span>Pubkey</span>
                             <SortButton :index="1" :sorted="sortColumn === 1" :asc="sortAsc" @sort="setSortValidator">
                             </SortButton>
                           </div>
                         </th>
-                        <th scope="col" class="px-4 py-2">
+                        <th scope="col" class="px-4 py-2 w-8">
                           Dora
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="validator of filteredValidatorList"
-                        class="transition duration-200 bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-100">
-                        <th scope="row"
-                          class="px-4 py-2 w-8 font-medium text-gray-900 whitespace-nowrap dark:text-white relative">
+                        class="transition duration-200 relative bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-100">
+                        <td class="px-4 py-2 relative">
+                          <div class="absolute inset-0 flex flex-row justify-center items-center">
+                            <SpinnerAnimated v-if="waitChangeValidator.has(validator.voting_pubkey)" class="w-4 h-4"
+                              title="Loading..." />
+                            <span v-else-if="validator.enabled" class="cursor-pointer" title="Enabled"
+                              @click="setValidatorRun(validator, false)">
+                              <PlayIcon class="w-4 h-4" />
+                            </span>
+                            <span v-else class="cursor-pointer" title="Disabled"
+                              @click="setValidatorRun(validator, true)">
+                              <PauseIcon class="w-4 h-4" />
+                            </span>
+                          </div>
+                        </td>
+                        <td class="px-4 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white relative">
                           <div class="absolute inset-0 flex flex-row justify-center items-center">
                             <div class="transition duration-200 inline-block w-4 h-4 rounded-full bg-gray-300"
-                              :class="[validator.enabled ? 'bg-green-700' : 'bg-red-700']"></div>
+                              :class="[isOnline ? 'bg-green-700' : 'bg-red-700']"></div>
                           </div>
-                        </th>
+                        </td>
                         <td class="px-4 py-2">
                           <div class="inline-flex flex-row gap-x-2">
                             <abbr :title="validator.voting_pubkey">{{ trimPubKey(validator.voting_pubkey, 12, 8) }}</abbr>
@@ -85,7 +112,7 @@
                               @click="copyText(validator.voting_pubkey)" />
                           </div>
                         </td>
-                        <td class="px-4 py-2 w-8 relative">
+                        <td class="px-4 py-2 relative">
                           <div class="absolute inset-0 flex flex-row justify-center items-center">
                             <a :href="getValidatorDoraLink(validator.voting_pubkey)" target="_blank"
                               title="Open Dora Validator Link">
@@ -118,11 +145,12 @@
 </template>
 
 <script setup lang="ts">
+import SpinnerAnimated from "./SpinnerAnimated.vue"
 import LoadingContainer from "./LoadingContainer.vue"
 import LightButton from "./LightButton.vue"
 import SortButton from "./SortButton.vue"
 import { Ref, computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ArrowTopRightOnSquareIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon, PencilIcon, CheckIcon } from '@heroicons/vue/24/solid'
+import { ArrowTopRightOnSquareIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon, PauseIcon, PlayIcon } from '@heroicons/vue/24/solid'
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
@@ -139,6 +167,7 @@ const searchKeyword = ref("");
 const sortColumn: Ref<number | undefined> = ref(undefined);
 const sortAsc = ref(true);
 
+const waitChangeValidator = ref(new Set<string>());
 const filteredValidatorList = computed(() => {
   let result: ValidatorData[] = [];
   if (!searchKeyword.value) {
@@ -177,6 +206,8 @@ const filteredValidatorList = computed(() => {
   return result;
 });
 
+const isOnline = ref(false)
+
 function loadLighthouseApiData() {
   if (mainBusy.value) {
     return;
@@ -186,7 +217,7 @@ function loadLighthouseApiData() {
   window.ipcRenderer.send("loadLighthouseApiData");
 }
 
-function setupAutoGetValidators() {
+function resetupInterval() {
   if (refreshId) {
     clearInterval(refreshId);
   }
@@ -200,6 +231,26 @@ function setupAutoGetValidators() {
       validatorList.value = validatorInfo;
     }
   }, 5000);
+
+  if (onlineRefreshId) {
+    clearInterval(onlineRefreshId);
+  }
+
+  onlineRefreshId = setInterval(_checkJibServer, 10000);
+
+}
+
+async function _checkJibServer() {
+  try {
+    await fetch(`https://dora.jibchain.net/`, {
+      method: "GET",
+      mode: 'no-cors',
+    });
+    isOnline.value = true;
+  } catch (err) {
+    console.error(err);
+    isOnline.value = false;
+  }
 }
 
 async function getValidators() {
@@ -216,6 +267,7 @@ async function getValidators() {
 
   apiBusy.value = false;
 }
+
 
 async function _getValidatorsInfo() {
   if (!lighhouseApiData.value) {
@@ -261,6 +313,32 @@ function getValidatorDoraLink(pubkey: string) {
   return `https://dora.jibchain.net/validator/${pubkey}`;
 }
 
+async function setValidatorRun(validator: ValidatorData, state: boolean) {
+  if (!lighhouseApiData.value || waitChangeValidator.value.has(validator.voting_pubkey)) {
+    return undefined;
+  }
+
+  waitChangeValidator.value.add(validator.voting_pubkey);
+
+  try {
+    await fetch(`http://localhost:${lighhouseApiData.value.apiPort}/lighthouse/validators/${validator.voting_pubkey}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${lighhouseApiData.value.apiToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        enabled: state
+      })
+    });
+    validator.enabled = state;
+  } catch (err) {
+    console.error(err);
+  }
+
+  waitChangeValidator.value.delete(validator.voting_pubkey)
+}
+
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -275,6 +353,7 @@ function toHome() {
 }
 
 let refreshId: NodeJS.Timeout | undefined;
+let onlineRefreshId: NodeJS.Timeout | undefined;
 
 onMounted(() => {
   window.ipcRenderer.on('loadLighthouseApiDataResponse', (_event, ...args) => {
@@ -287,11 +366,13 @@ onMounted(() => {
   });
 
 
-  setupAutoGetValidators();
+  resetupInterval();
+  _checkJibServer();
   loadLighthouseApiData();
 })
 
 onBeforeUnmount(() => {
   clearInterval(refreshId);
+  clearInterval(onlineRefreshId);
 })
 </script>

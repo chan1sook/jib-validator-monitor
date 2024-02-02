@@ -7,7 +7,6 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs/promises";
 import stringReplaceAll from 'string-replace-all';
-import { getLighthouseApiData } from "./manage-keys";
 export const deployValidatorsStatusEvent = new Event();
 
 export async function deployValidators(keyFileContent: Record<string, string>,
