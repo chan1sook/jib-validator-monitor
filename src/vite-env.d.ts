@@ -6,6 +6,8 @@ declare module '*.vue' {
   export default component
 }
 
+declare module 'validator';
+
 interface Window {
   // expose in the `electron/preload/index.ts`
   ipcRenderer: import('electron').IpcRenderer
@@ -31,10 +33,21 @@ interface DeployKeyResult {
   imported: number | undefined
   skipped: number | undefined
   apiToken: string | undefined
+  apiPort: number | undefined
 }
 
 interface ValidatorData {
   voting_pubkey: string
   description: string
   enabled: bool
+}
+
+interface VcConfigData {
+  apiToken?: string
+  apiPort?: number
+  sirenPort?: number
+}
+
+interface DeploySirenResult {
+  sirenPort: number
 }

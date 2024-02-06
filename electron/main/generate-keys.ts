@@ -1,18 +1,20 @@
 import Event from "node:events";
-import "colors";
 
 import { checkGitVersion, checkPipVersion, checkPythonVersion } from "./check-software";
-import { basicExec, getPythonCmd, sudoExec } from "./utils";
-import { spawn } from "node:child_process";
+import { getPythonCmd } from "./constant";
+import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
+import { isFileExists } from "./fs";
+import { getCustomLogger } from "./logger";
 
 export const generateKeysStatusEvent = new Event();
 
+const generateKeyLogger = getCustomLogger("generateKeys", generateKeysStatusEvent);
+
 export async function generateKeys(qty: number, withdrawAddress: string, keyPassword: string) {
   try {
-    console.log("[generateKeys]".blue, "Check Softwares");
-    generateKeysStatusEvent.emit("status", "Check Softwares")
+    generateKeyLogger.emitWithLog("Check Softwares");
 
     // check softwares
     const [gitVersion, pythonVersion, pipVersion] = await Promise.all([
@@ -20,11 +22,9 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       checkPythonVersion(),
       checkPipVersion(),
     ]);
-    console.log("[generateKeys]".blue, "Git", gitVersion);
-    console.log("[generateKeys]".blue, "Python", pythonVersion);
-    console.log("[generateKeys]".blue, "pip", pipVersion);
-
-
+    generateKeyLogger.logDebug("Git", gitVersion);
+    generateKeyLogger.logDebug("Python", pythonVersion);
+    generateKeyLogger.logDebug("pip", pipVersion);
 
     const sofewareNeeds: string[] = [];
     if (!gitVersion) {
@@ -38,63 +38,70 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     }
 
     if (sofewareNeeds.length > 0) {
-      console.log("[generateKeys]".blue, "Install Softwares");
-      generateKeysStatusEvent.emit("status", "Install Softwares")
+      generateKeyLogger.emitWithLog("Install Softwares");
 
       await sudoExec(
       `apt-get update
       apt-get install ${sofewareNeeds.join(' ')} -y
       `);
-      console.log("[generateKeys]".blue, "Softwares Installed");
+
+      generateKeyLogger.logDebug("Softwares Installed");
     }
 
-    // download git & run python 3
-    generateKeysStatusEvent.emit("status", "Clone Git")
-    console.log("[generateKeys]".blue, "Clone Git");
-    console.log("[VC_KEYGEN_TEMP]".magenta, process.env.VC_KEYGEN_TEMP);
+    generateKeyLogger.logInfo("VC_KEYGEN_TEMP", process.env.VC_KEYGEN_TEMP);
 
+    const runFilename = "./deposit.sh"
+    const hasRuntimeExits = await isFileExists(path.join(process.env.VC_KEYGEN_TEMP, runFilename));
+
+    if(!hasRuntimeExits) {
+      // download git & run python 3
+      generateKeyLogger.emitWithLog("Clone Git");
+  
+      await fs.mkdir(process.env.VC_KEYGEN_TEMP, { recursive: true });
+      await basicExec("git", [
+        "clone",
+        "https://github.com/jibchain-net/deposit-cli.git",
+        process.env.VC_KEYGEN_TEMP,
+      ]);
+
+      generateKeyLogger.emitWithLog("Install Python Dependency");
+
+      await basicExec("pip3", [
+        "install",
+        "-r",
+        "requirements.txt",
+      ], {
+        cwd: process.env.VC_KEYGEN_TEMP,
+      });
+
+      await basicExec("pip3", [
+        "install",
+        ".",
+      ], {
+        cwd: process.env.VC_KEYGEN_TEMP,
+      });
+
+      generateKeyLogger.logDebug("Script Installed");
+    } else {
+      generateKeyLogger.logDebug("Use Cached Script");
+    }
+    
+    generateKeyLogger.emitWithLog("Generate Keys");
+
+    // Clear old generated file
+    const keysPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys");
     try {
-      await fs.rm(process.env.VC_KEYGEN_TEMP, {
+      await fs.rm(keysPath, {
         recursive: true,
         force: true,
       });
-    } catch (err) {
+    } catch(err) {
 
     }
-    await fs.mkdir(process.env.VC_KEYGEN_TEMP, { recursive: true });
-    await basicExec("git", [
-      "clone",
-      "https://github.com/jibchain-net/deposit-cli.git",
-      process.env.VC_KEYGEN_TEMP,
-    ]);
-
-    generateKeysStatusEvent.emit("status", "Install Python Dependency")
-    console.log("[generateKeys]".blue, "Install Python Dependency");
-
-    await fs.mkdir(process.env.VC_KEYS_PATH, { recursive: true });
-
-    await basicExec("pip3", [
-      "install",
-      "-r",
-      "requirements.txt",
-    ], {
-      cwd: process.env.VC_KEYGEN_TEMP,
-    });
-
-    await basicExec("pip3", [
-      "install",
-      ".",
-    ], {
-      cwd: process.env.VC_KEYGEN_TEMP,
-    });
-
-    generateKeysStatusEvent.emit("status", "Generate Keys")
-    console.log("[generateKeys]".blue, "Generate Keys");
-    const keysPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys");
     await fs.mkdir(keysPath, { recursive: true });
-
+  
     const genKey = new Promise<GenerateKeyResponse>((resolve, reject) => {
-      const genKeyProcess = spawn("./deposit.sh", [
+      const genKeyProcess = spawnProcess(runFilename, [
         "--non_interactive",
         "new-mnemonic",
         `--num_validators=${qty}`,
@@ -114,7 +121,8 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
 
       genKeyProcess.stdout.on("data", (data) => {
         out += data.toString();
-        // console.log(`${step}`.red, out);
+
+        // generateKeyLogger.logInfo(`Step : ${step}`, out);
 
         if (step === 1 && out.includes("Please choose your language ['1. العربية', '2. ελληνικά', '3. English', '4. Français', '5. Bahasa melayu', '6. Italiano', '7. 日本語', '8. 한국어', '9. Português do Brasil', '10. român', '11. Türkçe', '12. 简体中文']:  [English]:")) {
           out = "";
@@ -139,7 +147,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           const token1 = token.split("Please type your mnemonic (separated by spaces) to confirm you have written it down. Note: you only need to enter the first 4 letters of each word if you'd prefer.")[0]
           mnemonic = token1.trim();
 
-          console.log("[mnemonic]".red, mnemonic);
+          generateKeyLogger.logSuccess("Key Mnemonic", mnemonic);
 
           out = "";
           genKeyProcess.stdin.write(`${mnemonic}\n`);
@@ -153,9 +161,10 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
 
       genKeyProcess.on("exit", async (code, signal) => {
         if (code === 0) {
-          console.log("[generateKeys]".blue, "Finalize");
-          // next det files paths
-          const exportPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys", "validator_keys");
+          generateKeyLogger.logDebug("Read Keys");
+          
+          // read content
+          const exportPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys/validator_keys");
           const files = await fs.readdir(exportPath);
           const contents = {};
           for (const file of files) {
@@ -164,13 +173,15 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           }
           resolve({ mnemonic, contents, exportPath });
         } else {
-          reject(new Error(`exit code:${code}`));
+          reject(new Error(`Exit code:${code}`));
         }
       })
 
-      genKeyProcess.on("error", reject)
+      genKeyProcess.on("error", reject);
     });
+
     const result = await genKey;
+    generateKeyLogger.logSuccess("Key Files", Object.keys(result.contents));
     return result;
   } catch (err) {
     throw err;

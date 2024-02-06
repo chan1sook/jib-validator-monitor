@@ -19,7 +19,7 @@
         </LoadingContainer>
         <template v-else>
           <h2 class="text-center text-lg">
-            Validator Information
+            Validator Management
           </h2>
           <h3 v-if="lastestError" class="text-center italic text-red-900 dark:text-red-300">
             {{ lastestError }}
@@ -30,16 +30,15 @@
               <template v-else>
                 <div class="py-2 flex flex-row items-center">
                   <div class="text-sm flex flex-row items-center gap-x-2">
-                    <span class="transition duration-200 inline-block w-4 h-4 rounded-full bg-gray-300"
-                      :class="[isOnline ? 'bg-green-700' : 'bg-red-700']"></span>
-                    <span v-if="isOnline"> Online </span>
+                    <LedStatus :state="isChainOnline" />
+                    <span v-if="(typeof isChainOnline != 'boolean')"> Loading </span>
+                    <span v-else-if="isChainOnline"> Online </span>
                     <span v-else> Offline </span>
                   </div>
-                  <div class="text-sm ml-auto">
+                  <div class="text-sm ml-auto inline-flex gap-x-2">
                     <span class="font-bold">Active:</span>
                     <span>
-                      {{ validatorList.filter((e) => e.enabled).length }}/{{
-                        validatorList.length }}
+                      {{ validatorActiveLength }}/{{ validatorList.length }}
                     </span>
                   </div>
                 </div>
@@ -80,6 +79,10 @@
                         <th scope="col" class="px-4 py-2 w-8">
                           Dora
                         </th>
+                        <!-- Disabled Temporary -->
+                        <th v-if="false" scope="col" class="px-4 py-2 w-8">
+                          Action
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -87,29 +90,29 @@
                         class="transition duration-200 relative bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-100">
                         <td class="px-4 py-2 relative">
                           <div class="absolute inset-0 flex flex-row justify-center items-center">
-                            <SpinnerAnimated v-if="waitChangeValidator.has(validator.voting_pubkey)" class="w-4 h-4"
-                              title="Loading..." />
-                            <span v-else-if="validator.enabled" class="cursor-pointer" title="Enabled"
-                              @click="setValidatorRun(validator, false)">
-                              <PlayIcon class="w-4 h-4" />
+                            <span v-if="waitChangeValidator.has(validator.voting_pubkey)" title="Loading...">
+                              <SpinnerAnimated class="w-4 h-4" />
                             </span>
-                            <span v-else class="cursor-pointer" title="Disabled"
-                              @click="setValidatorRun(validator, true)">
-                              <PauseIcon class="w-4 h-4" />
+                            <span v-else-if="validator.enabled" class="cursor-pointer" title="Enabled">
+                              <PlayIcon class="w-4 h-4" @click="setValidatorRun(validator, false)" />
+                            </span>
+                            <span v-else class="cursor-pointer" title="Disabled">
+                              <PauseIcon class="w-4 h-4" @click="setValidatorRun(validator, true)" />
                             </span>
                           </div>
                         </td>
                         <td class="px-4 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white relative">
                           <div class="absolute inset-0 flex flex-row justify-center items-center">
-                            <div class="transition duration-200 inline-block w-4 h-4 rounded-full bg-gray-300"
-                              :class="[isOnline ? 'bg-green-700' : 'bg-red-700']"></div>
+                            <LedStatus :state="validator.enabled && isChainOnline" />
                           </div>
                         </td>
                         <td class="px-4 py-2">
                           <div class="inline-flex flex-row gap-x-2">
                             <abbr :title="validator.voting_pubkey">{{ trimPubKey(validator.voting_pubkey, 12, 8) }}</abbr>
-                            <ClipboardDocumentListIcon class="w-4 h-4 cursor-pointer" title="Copy Pubkey"
-                              @click="copyText(validator.voting_pubkey)" />
+                            <span title="Copy Pubkey">
+                              <ClipboardDocumentListIcon class="w-4 h-4 cursor-pointer"
+                                @click="copyText(validator.voting_pubkey)" />
+                            </span>
                           </div>
                         </td>
                         <td class="px-4 py-2 relative">
@@ -118,6 +121,13 @@
                               title="Open Dora Validator Link">
                               <ArrowTopRightOnSquareIcon class="w-4 h-4 cursor-pointer" />
                             </a>
+                          </div>
+                        </td>
+                        <!-- Disabled Temporary -->
+                        <td v-if="false" class="px-4 py-2 relative">
+                          <div class="absolute inset-0 flex flex-row justify-center items-center">
+                            <ArrowUturnLeftIcon class="w-4 h-4 cursor-pointer" @click="popupExitValidator(validator)"
+                              title="Exit Validator" />
                           </div>
                         </td>
                       </tr>
@@ -139,6 +149,57 @@
             </template>
           </div>
         </template>
+        <LightModal v-if="exitValidatorTarget" @confirm="exitValidator(exitValidatorTarget)"
+          @close="closeExitValidatorPopup" @cancel="closeExitValidatorPopup">
+          <template #header>Confirm Voluntary exit</template>
+          <form @submit.prevent="exitValidator(exitValidatorTarget)">
+            <p class="text-base leading-relaxed text-red-900 dark:text-red-300">
+              WARNING: THIS IS IRREVERSIBLE OPERATION
+            </p>
+            <p class="text-base leading-relaxe">
+              You still need to run this node until node marked "exit_unslashed"
+            </p>
+            <div class="my-2">
+              <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                Enter Key Password
+              </label>
+              <div class="relative">
+                <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
+                  class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  :class="[getKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                  placeholder="Key Password" required :disabled="mainBusy">
+                <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
+                  <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
+                </div>
+              </div>
+            </div>
+            <p v-if="getKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
+              {{ getKeyPasswordError }}
+            </p>
+          </form>
+          <template #footer="{ close }">
+            <button type="button" class="transition duration-200 text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800
+                  disabled:bg-red-200
+                  " :disabled="!!getKeyPasswordError" @click="close('confirm')">
+              Confirm
+            </button>
+            <button type="button"
+              class="ms-3 text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
+              @click="close('cancel')">
+              Cancel
+            </button>
+          </template>
+        </LightModal>
+        <LightModal v-if="exitVcBusy" no-close>
+          <LoadingContainer>{{ loadingMessage }}</LoadingContainer>
+        </LightModal>
+        {{ toastError }}
+        <LightModal v-if="toastError" @close="toastError = ''">
+          <template #header>Error</template>
+          <div class="break-all">
+            {{ toastError }}
+          </div>
+        </LightModal>
       </div>
     </div>
   </div>
@@ -149,8 +210,12 @@ import SpinnerAnimated from "./SpinnerAnimated.vue"
 import LoadingContainer from "./LoadingContainer.vue"
 import LightButton from "./LightButton.vue"
 import SortButton from "./SortButton.vue"
+import PasswordToggler from "./PasswordToggler.vue"
+import LedStatus from "./LedStatus.vue"
+import LightModal from "./LightModal.vue"
+
 import { Ref, computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ArrowTopRightOnSquareIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon, PauseIcon, PlayIcon } from '@heroicons/vue/24/solid'
+import { ArrowTopRightOnSquareIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon, PauseIcon, PlayIcon, ArrowUturnLeftIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
@@ -158,8 +223,10 @@ const emit = defineEmits<{
 
 const mainBusy = ref(false);
 const apiBusy = ref(false);
+const exitVcBusy = ref(false);
 const loadingMessage = ref("Load Lighhouse Api Keys...");
 const lastestError = ref("");
+const toastError = ref("");
 
 const lighhouseApiData: Ref<LighhouseApiData | undefined> = ref(undefined);
 const validatorList: Ref<ValidatorData[]> = ref([]);
@@ -167,7 +234,9 @@ const searchKeyword = ref("");
 const sortColumn: Ref<number | undefined> = ref(undefined);
 const sortAsc = ref(true);
 
+const isChainOnline: Ref<boolean | undefined> = ref(undefined);
 const waitChangeValidator = ref(new Set<string>());
+
 const filteredValidatorList = computed(() => {
   let result: ValidatorData[] = [];
   if (!searchKeyword.value) {
@@ -205,8 +274,24 @@ const filteredValidatorList = computed(() => {
   }
   return result;
 });
+const validatorActiveLength = computed(() => {
+  return validatorList.value.filter((e) => e.enabled).length;
+})
 
-const isOnline = ref(false)
+const exitValidatorTarget: Ref<ValidatorData | undefined> = ref(undefined);
+const keyPassword = ref("");
+const showPassword = ref(false);
+
+const getKeyPasswordError = computed(() => {
+  if (keyPassword.value === "") {
+    return "Password not empty"
+  }
+  if (keyPassword.value.length < 8) {
+    return "Password too short!"
+  }
+
+  return "";
+})
 
 function loadLighthouseApiData() {
   if (mainBusy.value) {
@@ -217,7 +302,7 @@ function loadLighthouseApiData() {
   window.ipcRenderer.send("loadLighthouseApiData");
 }
 
-function resetupInterval() {
+function setupInterval() {
   if (refreshId) {
     clearInterval(refreshId);
   }
@@ -226,9 +311,9 @@ function resetupInterval() {
       return;
     }
 
-    const validatorInfo = await _getValidatorsInfo();
-    if (validatorInfo) {
-      validatorList.value = validatorInfo;
+    const validatorManagement = await _getValidatorsInfo();
+    if (validatorManagement) {
+      validatorList.value = validatorManagement;
     }
   }, 5000);
 
@@ -241,15 +326,17 @@ function resetupInterval() {
 }
 
 async function _checkJibServer() {
+  console.log("Check JIB");
+
   try {
     await fetch(`https://dora.jibchain.net/`, {
       method: "GET",
       mode: 'no-cors',
     });
-    isOnline.value = true;
+    isChainOnline.value = true;
   } catch (err) {
     console.error(err);
-    isOnline.value = false;
+    isChainOnline.value = false;
   }
 }
 
@@ -260,9 +347,9 @@ async function getValidators() {
 
   apiBusy.value = true;
 
-  const validatorInfo = await _getValidatorsInfo();
-  if (validatorInfo) {
-    validatorList.value = validatorInfo;
+  const validatorManagement = await _getValidatorsInfo();
+  if (validatorManagement) {
+    validatorList.value = validatorManagement;
   }
 
   apiBusy.value = false;
@@ -339,6 +426,34 @@ async function setValidatorRun(validator: ValidatorData, state: boolean) {
   waitChangeValidator.value.delete(validator.voting_pubkey)
 }
 
+async function popupExitValidator(validator: ValidatorData) {
+  if (!lighhouseApiData.value || waitChangeValidator.value.has(validator.voting_pubkey) || exitVcBusy.value) {
+    return;
+  }
+
+  keyPassword.value = "";
+  showPassword.value = false;
+  exitValidatorTarget.value = validator;
+}
+
+async function closeExitValidatorPopup() {
+  keyPassword.value = "";
+  showPassword.value = false;
+  exitValidatorTarget.value = undefined;
+}
+
+async function exitValidator(validator: ValidatorData) {
+  if (!lighhouseApiData.value || waitChangeValidator.value.has(validator.voting_pubkey) || !!getKeyPasswordError.value || exitVcBusy.value) {
+    return;
+  }
+
+  waitChangeValidator.value.add(validator.voting_pubkey);
+  exitVcBusy.value = true;
+  window.ipcRenderer.send("exitValidator", validator.voting_pubkey, keyPassword.value);
+
+  closeExitValidatorPopup();
+}
+
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -366,7 +481,24 @@ onMounted(() => {
   });
 
 
-  resetupInterval();
+  window.ipcRenderer.on("exitValidatorStatus", (err, ...args) => {
+    loadingMessage.value = args[0] as string;
+  })
+
+  window.ipcRenderer.on('exitValidatorResponse', (_event, ...args) => {
+    const [resError, pubkey, response] = args as [string | null, string, string];
+
+    if (resError) {
+      // show error
+      console.error(resError);
+      toastError.value = resError || "Can't exit validators";
+    }
+
+    waitChangeValidator.value.delete(pubkey);
+    exitVcBusy.value = false;
+  });
+
+  setupInterval();
   _checkJibServer();
   loadLighthouseApiData();
 })

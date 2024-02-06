@@ -6,9 +6,10 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateKeys, generateKeysStatusEvent } from "./generate-keys";
 import { deployValidators, deployValidatorsStatusEvent } from "./deploy-vcs";
-import { getLighthouseApiData, readKeyFiles } from "./manage-keys";
+import { getLighthouseApiData, readKeyFiles, readProgramConfig } from "./fs";
 import { checkDockerVersion, checkVcInstalled } from "./check-software";
-import { sudoExec } from "./utils";
+import { exitValidator, exitValidatorsStatusEvent } from "./exit-vc";
+import { deployJbcSirenStatusEvent, deployJbcSiren } from "./deploy-siren";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,9 +32,11 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
 
 const tempBasePath = process.env.VITE_DEV_SERVER_URL
   ? join(process.env.DIST_ELECTRON, "../.temp/") : "/tmp/";
+
+process.env.LIGHTHOUSE_EXEC_PATH = join(tempBasePath, ".lighthouse");
 process.env.VC_KEYGEN_TEMP = join(tempBasePath, ".vc-keygen");
-process.env.VC_INSTALL_TEMP = join(tempBasePath, ".vc-deployer");
-process.env.VC_EXIT_TEMP = join(tempBasePath, ".vc-exit");
+process.env.VC_DEPLOY_TEMP = join(tempBasePath, ".vc-deployer");
+process.env.JBC_SIREN_TEMP = join(tempBasePath, ".jib-siren");
 process.env.VC_KEYS_PATH = join(homedir(), ".jib-lighthouse");
 
 // Disable GPU Acceleration for Windows 7
@@ -88,7 +91,7 @@ async function createWindow() {
 
   // Make all links open with the browser, not with the application
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https:")) shell.openExternal(url);
+    if (url.startsWith("https:") || url.startsWith("http://localhost")) shell.openExternal(url);
     return { action: "deny" };
   });
   // win.webContents.on('will-navigate', (event, url) => { }) #344
@@ -135,18 +138,27 @@ ipcMain.handle("open-win", (_, arg) => {
   }
 });
 
+ipcMain.on("getPaths", async (_ev, ...args) => {
+  win?.webContents.send("getPathsResponse", {
+    VITE_PUBLIC: process.env.VITE_PUBLIC,
+    LIGHTHOUSE_EXEC_PATH: process.env.LIGHTHOUSE_EXEC_PATH,
+    VC_KEYGEN_TEMP: process.env.VC_KEYGEN_TEMP,
+    VC_DEPLOY_TEMP: process.env.VC_DEPLOY_TEMP,
+    VC_KEYS_PATH: process.env.VC_KEYS_PATH,
+  });
+});
+
+
 ipcMain.on("loadLighthouseApiData", async (_ev, ...args) => {
-  const type = args[0] as string | undefined;
   let response: LighhouseApiData;
 
   try {
-    // TODO use lighthouse api instend ps docker
     const [dockerVersion, vcInstalled] = await Promise.all([
       checkDockerVersion(),
       checkVcInstalled(), 
     ]);
     if(!!dockerVersion && vcInstalled) {
-      response =  await getLighthouseApiData();
+      response = await getLighthouseApiData();
     }
   } catch(err) {
     console.error(err);
@@ -155,13 +167,17 @@ ipcMain.on("loadLighthouseApiData", async (_ev, ...args) => {
   win?.webContents.send("loadLighthouseApiDataResponse", response);
 });
 
-ipcMain.on("getPaths", async (_ev, ...args) => {
-  win?.webContents.send("getPathsResponse", {
-    VITE_PUBLIC: process.env.VITE_PUBLIC,
-    VC_KEYGEN_TEMP: process.env.VC_KEYGEN_TEMP,
-    VC_INSTALL_TEMP: process.env.VC_INSTALL_TEMP,
-    VC_KEYS_PATH: process.env.VC_KEYS_PATH,
-  });
+
+ipcMain.on("loadSirenApiData", async (_ev, ...args) => {
+  let response: VcConfigData;
+
+  try {
+    response = await readProgramConfig();
+  } catch(err) {
+    console.error(err);
+  }
+  
+  win?.webContents.send("loadSirenApiDataResponse", response);
 });
 
 generateKeysStatusEvent.on("status", (status) => {
@@ -221,3 +237,38 @@ ipcMain.on("deployValidators", async (_ev, ...args) => {
     win?.webContents.send("deployValidatorsResponse", err.message);
   }
 });
+
+exitValidatorsStatusEvent.on("status", (status) => {
+  win?.webContents.send("exitValidatorStatus", status);
+});
+
+ipcMain.on("exitValidator", async (_ev, ...args) => {
+  const [pubkey, keyPassword] = args as [string, string];
+
+  try {
+    await exitValidator(pubkey, keyPassword);
+    win?.webContents.send("exitValidatorResponse", null, pubkey);
+  } catch (err) {
+    console.error(err);
+    win?.webContents.send("exitValidatorResponse", err.message, pubkey);
+  }
+  
+})
+
+deployJbcSirenStatusEvent.on("status", (status) => {
+  win?.webContents.send("deployJbcSirenStatus", status);
+})
+
+ipcMain.on("deployJbcSiren", async (_ev, ...args) => {
+  const [port] = args as [string];
+
+  try {
+    await deployJbcSiren(port);
+    const response = await readProgramConfig();
+    win?.webContents.send("deployJbcSirenResponse", null, response);
+  } catch (err) {
+    console.error(err);
+    win?.webContents.send("deployJbcSirenResponse", err.message);
+  }
+  
+})

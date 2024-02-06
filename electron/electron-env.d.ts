@@ -8,9 +8,10 @@ declare namespace NodeJS {
     /** /dist/ or /public/ */
     VITE_PUBLIC: string
     /** extra paths */
+    LIGHTHOUSE_EXEC_PATH: string
     VC_KEYGEN_TEMP: string
-    VC_INSTALL_TEMP: string
-    VC_EXIT_TEMP: string
+    VC_DEPLOY_TEMP: string
+    JBC_SIREN_TEMP: string
     VC_KEYS_PATH: string
   }
 }
@@ -29,6 +30,12 @@ interface DeployKeyAdvanceSetting {
 interface LighhouseApiData {
   apiToken: string
   apiPort: number
+}
+
+interface VcConfigData {
+  apiToken?: string
+  apiPort?: number
+  sirenPort?: number
 }
 
 interface DeployKeyResult {

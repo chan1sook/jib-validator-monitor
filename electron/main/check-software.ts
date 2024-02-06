@@ -1,5 +1,6 @@
-import { basicExec, getPythonCmd, validatorConfigPath } from "./utils";
-import fs from "node:fs/promises";
+import { basicExec } from "./exec";
+import { readProgramConfig } from "./fs";
+import { getPythonCmd } from "./constant";
 
 export async function checkDockerVersion(): Promise<string | undefined> {
   try {
@@ -48,22 +49,23 @@ export async function checkPythonVersion(): Promise<string | undefined> {
   }
 }
 
-export async function checkPythonVenvExists(): Promise<boolean> {
-  try {
-    const venvPackageName = `${getPythonCmd()}-venv`;
-    const { stdout } = await basicExec("apt", ["list", "--installed", venvPackageName]);
+// not used
+// export async function checkPythonVenvExists(): Promise<boolean> {
+//   try {
+//     const venvPackageName = `${getPythonCmd()}-venv`;
+//     const { stdout } = await basicExec("apt", ["list", "--installed", venvPackageName]);
 
-    if (stdout.includes(venvPackageName)) {
-      return true;
-    } else {
-      return false;
-    }
-  } catch (err) {
-    console.error(err);
+//     if (stdout.includes(venvPackageName)) {
+//       return true;
+//     } else {
+//       return false;
+//     }
+//   } catch (err) {
+//     console.error(err);
 
-    return false;
-  }
-}
+//     return false;
+//   }
+// }
 
 
 export async function checkPipVersion(): Promise<string | undefined> {
@@ -85,13 +87,18 @@ export async function checkPipVersion(): Promise<string | undefined> {
 
 export async function checkVcInstalled() {
   try {
-    await fs.access(validatorConfigPath());
-    return true;
+    const config = await readProgramConfig();
+    return typeof config.apiPort !== "undefined" && typeof config.apiToken !== "undefined";
   } catch (err) {
     return false;
   }
 }
 
-async function checkVcRunning() {
-  
+export async function checkSirenInstalled() {
+  try {
+    const config = await readProgramConfig();
+    return typeof config.sirenPort !== "undefined";
+  } catch (err) {
+    return false;
+  }
 }

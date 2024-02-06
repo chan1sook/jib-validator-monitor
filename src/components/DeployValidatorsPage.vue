@@ -40,7 +40,9 @@
                   <div class="flex-1">
                     {{ key }}
                   </div>
-                  <XMarkIcon class="w-4 h-4 cursor-pointer" title="Remove File" @click="removeFile(key)" />
+                  <span title="Remove File">
+                    <XMarkIcon class="w-4 h-4 cursor-pointer" @click="removeFile(key)" />
+                  </span>
                 </div>
                 <div v-if="Object.keys(files).length === 0" class="italic text-center text-sm">
                   No Files
@@ -63,71 +65,48 @@
                   <label for="machine-public-ip" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     Machine Public IP
                   </label>
-                  <div class="relative">
-                    <div class="absolute inset-y-0 start-0 top-0 flex items-center ps-3.5 pointer-events-none">
+                  <LightInput type="text" id="machine-public-ip" v-model="machinePublicIp"
+                    :validation="getMachinePublicIpError" placeholder="eg xxx.xxx.xxx.xxx" required :disabled="mainBusy">
+                    <template #lead="{ validation }">
                       <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400"
-                        :class="[getMachinePublicIpError ? 'text-red-900' : '']" aria-hidden="true" />
-                    </div>
-                    <input type="text" id="achine-public-ip" v-model="machinePublicIp"
-                      class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                      :class="[getMachinePublicIpError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
-                      placeholder="eg xxx.xxx.xxx.xxx" required :disabled="mainBusy">
-                  </div>
-                  <p v-if="getMachinePublicIpError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                    {{ getMachinePublicIpError }}
-                  </p>
+                        :class="[validation ? 'text-red-900' : '']" aria-hidden="true" />
+                    </template>
+                  </LightInput>
                 </div>
                 <div class="w-full">
                   <label for="fee-recipient-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     Fee Recipient Address
                   </label>
-                  <div class="relative">
-                    <div class="absolute inset-y-0 start-0 top-0 flex items-center ps-3.5 pointer-events-none">
+                  <LightInput type="text" id="fee-recipient-address" v-model="feeRecipientAddress"
+                    :validation="getFeeRecipientAddressError" placeholder="ETH Address" required :disabled="mainBusy">
+                    <template #lead="{ validation }">
                       <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400"
-                        :class="[getFeeRecipientAddressError ? 'text-red-900' : '']" />
-                    </div>
-                    <input type="text" id="fee-recipient-address" v-model="feeRecipientAddress"
-                      class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                      :class="[getFeeRecipientAddressError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
-                      placeholder="ETH Address" required :disabled="mainBusy">
-                  </div>
-                  <p v-if="getFeeRecipientAddressError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                    {{ getFeeRecipientAddressError }}
-                  </p>
+                        :class="[validation ? 'text-red-900' : '']" />
+                    </template>
+                  </LightInput>
                 </div>
                 <div class="w-full">
                   <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     Key Password
                   </label>
-                  <div class="relative">
-                    <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
-                      class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                      :class="[getKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
-                      placeholder="Key Password" required :disabled="mainBusy">
-                    <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
+                  <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
+                    :validation="getKeyPasswordError" placeholder="Key Password" required :disabled="mainBusy">
+                    <template #tail>
                       <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
-                    </div>
-                  </div>
-                  <p v-if="getKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                    {{ getKeyPasswordError }}
-                  </p>
+                    </template>
+                  </LightInput>
                 </div>
                 <div class="w-full">
                   <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     Confrim Key Password
                   </label>
-                  <div class="relative">
-                    <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="confirmKeyPassword"
-                      class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                      :class="[getConfirmKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
-                      placeholder="Key Password" required :disabled="mainBusy">
-                    <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
+                  <LightInput :type="showPassword ? 'text' : 'password'" id="password-address"
+                    v-model="confirmKeyPassword" :validation="getConfirmKeyPasswordError" placeholder="Key Password"
+                    required :disabled="mainBusy">
+                    <template #tail>
                       <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
-                    </div>
-                  </div>
-                  <p v-if="getConfirmKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                    {{ getConfirmKeyPasswordError }}
-                  </p>
+                    </template>
+                  </LightInput>
                 </div>
               </div>
               <div class="w-full self-start">
@@ -142,24 +121,17 @@
                   <label for="graffiti" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     Graffiti
                   </label>
-                  <input type="text" id="graffiti" v-model="advanceSetting.graffiti"
-                    class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    placeholder="Graffiti" :disabled="mainBusy">
+                  <LightInput type="text" id="graffiti" v-model="advanceSetting.graffiti" placeholder="Graffiti"
+                    :disabled="mainBusy" />
                 </div>
                 <div class="w-full">
                   <label for="lighhouse-http-port" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     Lighhouse API Port
                   </label>
-                  <input type="text" id="vc-graffiti" v-model="advanceSetting.exposeLighhouseApiPort"
-                    class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    :class="[getLighthouseApiPortError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
+                  <LightInput type="text" id="vc-graffiti" v-model="advanceSetting.exposeLighhouseApiPort"
+                    infomation="Set Lighhouse API Port (for monitoring)" :validation="getLighthouseApiPortError"
                     placeholder="Default port is 5062" required :disabled="mainBusy">
-                  <p v-if="getLighthouseApiPortError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                    {{ getLighthouseApiPortError }}
-                  </p>
-                  <p v-else class="mt-2 text-xs text-gray-900 dark:text-gray-500">
-                    Set Lighhouse API Port (for monitoring)
-                  </p>
+                  </LightInput>
                 </div>
               </template>
               <div class="mt-4">
@@ -178,11 +150,21 @@
               <div>
                 <span class="font-bold">Skipped:</span> {{ deployResult.skipped }}
               </div>
-              <div v-if="deployResult.apiToken" class="break-all">
-                <span class="font-bold">API Token:</span> {{ deployResult.apiToken }}
-                <ClipboardDocumentListIcon class="w-4 h-4 cursor-pointer" title="Copy API Key"
-                  @click="copyText(deployResult.apiToken)" />
-              </div>
+              <template v-if="deployResult.apiPort && deployResult.apiToken">
+                <div class="break-all mt-4">
+                  <span class="font-bold">Lighthouse API Port:</span> {{ deployResult.apiPort }}
+                </div>
+                <div>
+                  <span class="font-bold">API Token: </span>
+                  <span class="break-all">
+                    {{ deployResult.apiToken }}
+                    <span title="Copy API Key">
+                      <ClipboardDocumentListIcon class="w-4 h-4 inline-block cursor-pointer"
+                        @click="copyText(deployResult.apiToken)" />
+                    </span>
+                  </span>
+                </div>
+              </template>
             </div>
             <div class="mt-2">
               <LightButton class="mx-auto" @click="toHome()">Back to home</LightButton>
@@ -197,12 +179,13 @@
 <script setup lang="ts">
 import LoadingContainer from "./LoadingContainer.vue"
 import LightButton from "./LightButton.vue"
+import LightInput from "./LightInput.vue"
 import PasswordToggler from "./PasswordToggler.vue"
 import { XMarkIcon, MapPinIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/solid'
 
 import { ref, onMounted, computed, Ref } from 'vue';
-import { initFlowbite } from 'flowbite'
 import { isAddress } from "ethers";
+import validator from 'validator';
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
@@ -255,6 +238,9 @@ const getKeyFilesError = computed(() => {
 const getMachinePublicIpError = computed(() => {
   if (!machinePublicIp.value) {
     return "Required";
+  }
+  if (!validator.isIP(machinePublicIp.value) && !validator.isFQDN(machinePublicIp.value)) {
+    return "Invalid ip or domain";
   }
   return "";
 });
@@ -350,10 +336,8 @@ function toHome() {
 }
 
 onMounted(() => {
-  initFlowbite();
-
   window.ipcRenderer.on("selectVcKeyFilesResponse", (err, ...args) => {
-    const [resError, response] = args as [Error | null, Record<string, string>];
+    const [resError, response] = args as [string | null, Record<string, string>];
     if (resError) {
       // show error
       console.error(resError);
@@ -367,7 +351,7 @@ onMounted(() => {
   })
 
   window.ipcRenderer.on("deployValidatorsResponse", (err, ...args) => {
-    const [resError, response] = args as [Error | null, DeployKeyResult | undefined];
+    const [resError, response] = args as [string | null, DeployKeyResult | undefined];
     if (resError) {
       // show error
       console.error(resError);

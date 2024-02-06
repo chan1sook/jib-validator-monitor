@@ -25,9 +25,13 @@
           </HomeButton>
         </div>
         <div class="my-2 flex flex-row justify-center flex-wrap gap-4">
-          <HomeButton @click="validatorInfo">
+          <HomeButton @click="jbcSirenMonitor">
+            <TvIcon class="w-8 h-8" />
+            <div class="text-sm text-center">JBC Siren Monitor</div>
+          </HomeButton>
+          <HomeButton @click="validatorManagement">
             <InformationCircleIcon class="w-8 h-8" />
-            <div class="text-sm text-center">Validators Info</div>
+            <div class="text-sm text-center">Validators Managemnet</div>
           </HomeButton>
         </div>
       </div>
@@ -37,7 +41,7 @@
 
 <script setup lang="ts">
 import HomeButton from "./HomeButton.vue"
-import { KeyIcon, WalletIcon, ArrowDownTrayIcon, InformationCircleIcon } from '@heroicons/vue/24/solid'
+import { KeyIcon, WalletIcon, ArrowDownTrayIcon, InformationCircleIcon, TvIcon } from '@heroicons/vue/24/solid'
 
 import { onMounted } from 'vue';
 
@@ -53,8 +57,12 @@ function deployValidators() {
   emit("setPage", "deployValidators");
 }
 
-function validatorInfo() {
-  emit("setPage", "validatorInfo");
+function validatorManagement() {
+  emit("setPage", "validatorManagement");
+}
+
+function jbcSirenMonitor() {
+  emit("setPage", "jbcSirenMonitor");
 }
 
 onMounted(() => {

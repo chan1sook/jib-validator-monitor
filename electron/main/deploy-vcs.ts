@@ -1,13 +1,17 @@
 import Event from "node:events";
-import "colors";
 
 import { checkDockerVersion, checkGitVersion, } from "./check-software";
-import { basicExec, getLighhouseDownloadUrl, sudoExec, validatorConfigPath } from "./utils";
-import { spawn } from "node:child_process";
+import { getLighhouseDownloadUrl, getLocalLighthousePath, validatorDockerComposeGroup, validatorDockerComposePath } from "./constant";
+import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
 import stringReplaceAll from 'string-replace-all';
+import { isFileExists, writeProgramConfig } from "./fs";
+import { getCustomLogger } from "./logger";
+
 export const deployValidatorsStatusEvent = new Event();
+
+const deployVcLogger = getCustomLogger("deployValidators", deployValidatorsStatusEvent);
 
 export async function deployValidators(keyFileContent: Record<string, string>,
   machinePublicIp: string,
@@ -16,8 +20,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
   advanceSetting: DeployKeyAdvanceSetting,
 ) {
   try {
-    console.log("[deployValidators]".blue, "Check Softwares");
-    deployValidatorsStatusEvent.emit("status", "Check Softwares")
+    deployVcLogger.emitWithLog("Check Softwares");
 
     // check softwares
     const [dockerVersion, gitVersion] = await Promise.all([
@@ -25,8 +28,8 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       checkGitVersion(),
     ])
 
-    console.log("[deployValidators]".blue, "Docker", dockerVersion);
-    console.log("[deployValidators]".blue, "Git", gitVersion);
+    deployVcLogger.logDebug("Docker", dockerVersion);
+    deployVcLogger.logDebug("Git", gitVersion);
 
     if (!dockerVersion || !gitVersion) {
       let cmd = "";
@@ -55,59 +58,54 @@ export async function deployValidators(keyFileContent: Record<string, string>,
         `;
       }
 
-      console.log("[deployValidators]".blue, "Install Softwares");
-      deployValidatorsStatusEvent.emit("status", "Install Softwares")
+      deployVcLogger.emitWithLog("Install Softwares");
 
       await sudoExec(cmd);
-      console.log("[deployValidators]".blue, "Softwares Installed");
+
+      deployVcLogger.logDebug("Softwares Installed");
+    }
+    
+    deployVcLogger.logInfo("VC_DEPLOY_TEMP", process.env.VC_DEPLOY_TEMP);
+    deployVcLogger.logInfo("VC_KEYS_PATH", process.env.VC_KEYS_PATH);
+
+    // Get jibchain data (and script)
+    const chainConfigPath = path.join(process.env.VC_DEPLOY_TEMP, "config");
+    const hasChainConfigExits = await isFileExists(chainConfigPath);
+    if(!hasChainConfigExits) {
+      try {
+        await fs.rm(process.env.VC_DEPLOY_TEMP, {
+          recursive: true,
+          force: true,
+        });
+      } catch (err) {
+  
+      }
+    
+      await fs.mkdir(process.env.VC_DEPLOY_TEMP, { recursive: true });
+
+      // download git
+      deployVcLogger.emitWithLog("Clone Jibchain Script Git");
+    
+      await basicExec("git", [
+        "clone",
+        "https://github.com/jibchain-net/node.git",
+        process.env.VC_DEPLOY_TEMP,
+      ]);
+    } else {
+      deployVcLogger.logDebug("Use Cached Script");
     }
 
-    // download git
-    deployValidatorsStatusEvent.emit("status", "Clone Jibchain Script Git")
-    console.log("[deployValidators]".blue, "Clone Jibchain Script Git");
-    console.log("[VC_INSTALL_TEMP]".magenta, process.env.VC_INSTALL_TEMP);
-    console.log("[VC_KEYS_PATH]".magenta, process.env.VC_KEYS_PATH);
+    // Create files
+    deployVcLogger.emitWithLog("Create Files");
 
+    const tempKeyPath = path.join(process.env.VC_DEPLOY_TEMP, "keys");
     try {
-      await fs.rm(process.env.VC_INSTALL_TEMP, {
+      await fs.rm(tempKeyPath, {
         recursive: true,
         force: true,
       });
     } catch (err) {
-
     }
-    await fs.mkdir(process.env.VC_INSTALL_TEMP, { recursive: true });
-    await basicExec("git", [
-      "clone",
-      "https://github.com/jibchain-net/node.git",
-      process.env.VC_INSTALL_TEMP,
-    ]);
-
-    // download git
-    deployValidatorsStatusEvent.emit("status", "Download Lighthouse")
-    console.log("[deployValidators]".blue, "Download Lighthouse");
-    // Create files
-    await basicExec("curl", [
-      "-L",
-      getLighhouseDownloadUrl(),
-      "-o",
-      "lighthouse.tar.gz",
-    ], {
-      cwd: process.env.VC_INSTALL_TEMP,
-    });
-
-    await basicExec("tar", [
-      "-xvf",
-      "lighthouse.tar.gz",
-    ], {
-      cwd: process.env.VC_INSTALL_TEMP,
-    });
-
-    // Create files
-    deployValidatorsStatusEvent.emit("status", "Create Files")
-    console.log("[deployValidators]".blue, "Create Files");
-
-    const tempKeyPath = path.join(process.env.VC_INSTALL_TEMP, "keys");
     await fs.mkdir(tempKeyPath, { recursive: true });
 
     for (const fileKey of Object.keys(keyFileContent)) {
@@ -165,52 +163,99 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       `      - --http-address=0.0.0.0\n`+
       `      - --http-allow-origin=*\n`+
       `      - --unencrypted-http-transport\n`;
-    await fs.writeFile(validatorConfigPath(), composeContent);
+    await fs.writeFile(validatorDockerComposePath(), composeContent);
 
+    deployVcLogger.logInfo("LIGHTHOUSE_EXEC_PATH", process.env.LIGHTHOUSE_EXEC_PATH);
+
+    const hasLighthouseExists = await isFileExists(getLocalLighthousePath());
+    if(!hasLighthouseExists) {
+      try {
+        await fs.rm(process.env.LIGHTHOUSE_EXEC_PATH, {
+          recursive: true,
+          force: true,
+        });
+      } catch (err) {
+  
+      }
+    
+      await fs.mkdir(process.env.LIGHTHOUSE_EXEC_PATH, { recursive: true });
+
+      deployVcLogger.emitWithLog("Download Lighthouse");
+
+      // Create files
+      await basicExec("curl", [
+        "-L",
+        getLighhouseDownloadUrl(),
+        "-o",
+        "lighthouse.tar.gz",
+      ], {
+        cwd: process.env.LIGHTHOUSE_EXEC_PATH,
+      });
+  
+      deployVcLogger.emitWithLog("Extract Lighthouse File");
+
+      await basicExec("tar", [
+        "-xvf",
+        "lighthouse.tar.gz",
+      ], {
+        cwd: process.env.LIGHTHOUSE_EXEC_PATH,
+      });
+
+      deployVcLogger.logDebug("Lighthouse Downloaded");
+    } else {
+      deployVcLogger.logDebug("Use Cached File");
+    }
+    
     // Import key
-    deployValidatorsStatusEvent.emit("status", "Import Keys")
-    console.log("[deployValidators]".blue, "Import Keys");
+    deployVcLogger.emitWithLog("Import Keys");
+    try {
+      await fs.rm(vcKeyExportPath, {
+        recursive: true,
+        force: true,
+      });
+    } catch (err) {
 
-    // do on temp path
-    const importKey = new Promise<DeployKeyResult>((resolve, reject) => {
-      const genKeyProcess = spawn("./lighthouse", [
+    }
+
+    const importKeyPromise = new Promise<DeployKeyResult>((resolve, reject) => {
+      const importKeyProcess = spawnProcess("./lighthouse", [
         "account",
         "validator",
         "import",
         "--directory",
-        "keys",
+        tempKeyPath,
         "--testnet-dir",
-        "config",
+        chainConfigPath,
         "--datadir",
         vcKeyExportPath,
         "--reuse-password",
         "--stdin-inputs"
       ], {
-        cwd: process.env.VC_INSTALL_TEMP,
+        cwd: process.env.LIGHTHOUSE_EXEC_PATH,
         timeout: 60 * 60 * 1000,
       })
 
       let step = 1;
       let out = "";
 
-      // lighthouse account imnport out as stderr
-      genKeyProcess.stderr.on("data", (data) => {
+      // lighthouse account import out as stderr
+      importKeyProcess.stderr.on("data", (data) => {
         out += data.toString();
-        // console.log(`${step}`.red, out);
+
+        // deployVcLogger.logInfo(`Step : ${step}`, out);
 
         if (step === 1 && out.includes("Enter the keystore password, or press enter to omit it:")) {
           out = "";
-          genKeyProcess.stdin.write(`${keyPassword}\n\n`);
+          importKeyProcess.stdin.write(`${keyPassword}\n\n`);
           step += 1;
         }
       })
 
-      genKeyProcess.on("exit", async (code, signal) => {
+      importKeyProcess.on("exit", async (code, signal) => {
         if (code === 0) {
           const importResult: DeployKeyResult = {
             imported: undefined,
             skipped: undefined,
-            apiToken: undefined,
           }
           const captureOutText = /Successfully imported ([0-9]+) validators? \(([0-9]+) skipped\)\./.exec(out);
           if (captureOutText) {
@@ -220,16 +265,23 @@ export async function deployValidators(keyFileContent: Record<string, string>,
 
           resolve(importResult);
         } else {
-          reject(new Error(`exit code:${code}`));
+          reject(new Error(`Exit code:${code}`));
         }
       })
 
-      genKeyProcess.on("error", reject)
+      importKeyProcess.on("error", (err) => {
+        console.error(err);
+        reject(err);
+      })
     });
-    const importedResult = await importKey;
+    const importedResult = await importKeyPromise;
 
-    console.log("[Import Keys]".green, importedResult);
+    deployVcLogger.logSuccess("Import Keys Result", {
+      imported: importedResult.imported,
+      skipped: importedResult.skipped
+    });
 
+    
     // fix deploy issue when use docker
     // change path inside validator_definitions.yml
     const vcDefsFilePath = path.join(vcKeyExportPath, "/validators/validator_definitions.yml");
@@ -241,20 +293,22 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     await fs.writeFile(vcDefsFilePath, newVcDefsContentStr);
 
     // Finally Deploy Docker (Yay!)
-    deployValidatorsStatusEvent.emit("status", "Deploy docker")
-    console.log("[deployValidators]".blue, "Deploy docker");
+    deployVcLogger.emitWithLog("Deploy docker");
 
     const vcKeysCopyTargetPath = path.join(vcKeyMountPath, "custom");
+    const dockerComposeProjectGroup = validatorDockerComposeGroup();
 
-    await sudoExec(`docker compose -f "${validatorConfigPath()}" down
-    cp -rf "${path.join(process.env.VC_INSTALL_TEMP, "config")}" "${process.env.VC_KEYS_PATH}"
+    await sudoExec(`docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" down
+    docker container rm -f jbc-validator
+    cp -rf "${path.join(process.env.VC_DEPLOY_TEMP, "config")}" "${process.env.VC_KEYS_PATH}"
+    rm -rf "${vcKeysCopyTargetPath}"
     mkdir -p "${vcKeysCopyTargetPath}"
     cp -rf ${vcKeyExportPath}/* "${vcKeysCopyTargetPath}"
-    docker compose -f "${validatorConfigPath()}" up -d
+    docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" up -d
     `);
 
-    deployValidatorsStatusEvent.emit("status", "Get API Token");
-    console.log("[deployValidators]".blue, "Get API Token");
+    // Write Config
+    deployVcLogger.emitWithLog("Get API Token");
 
     // Rewrite Lighthouse API Key to rightful format
     const apiKeyPath = path.join(vcKeyMountPath, "custom/validators/api-token.txt");
@@ -267,8 +321,8 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       apiPort: lighhouseApiPort,
     }
     
-    await fs.writeFile(path.join(process.env.VC_KEYS_PATH, "lighthouse-api-info.json"), JSON.stringify(lighhouseApiData));
-    console.log("[Lighhouse API Data]".green, lighhouseApiPort, apiToken);
+    await writeProgramConfig(lighhouseApiData, true);
+    deployVcLogger.logSuccess("Lighhouse API Info", lighhouseApiData);
 
     return importedResult;
   } catch (err) {

@@ -29,62 +29,42 @@
               <label for="node-count" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                 Number of Nodes:
               </label>
-              <input type="number" id="node-count" v-model.number="nodeCount" min="1" step="1"
-                aria-describedby="helper-text-explanation"
-                class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="1" required :disabled="mainBusy">
+              <LightInput type="number" id="node-count" v-model.number="nodeCount" min="1" step="1" placeholder="1"
+                required :disabled="mainBusy" />
             </div>
             <div class="w-full">
               <label for="withdraw-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                 Withdraw Address
               </label>
-              <div class="relative">
-                <div class="absolute inset-y-0 start-0 top-0 flex items-center ps-3.5 pointer-events-none">
+              <LightInput type="text" id="withdraw-address" v-model="withdrawAddress"
+                :validation="getWithdrawAddressError" placeholder="ETH Address" required :disabled="mainBusy">
+                <template #lead="{ validation }">
                   <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400"
-                    :class="[getWithdrawAddressError ? 'text-red-900' : '']" />
-                </div>
-                <input type="text" id="withdraw-address" v-model="withdrawAddress"
-                  class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  :class="[getWithdrawAddressError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
-                  placeholder="ETH Address" required :disabled="mainBusy">
-              </div>
-              <p v-if="getWithdrawAddressError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                {{ getWithdrawAddressError }}
-              </p>
+                    :class="[validation ? 'text-red-900' : '']" />
+                </template>
+              </LightInput>
             </div>
             <div class="w-full">
               <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                 Key Password
               </label>
-              <div class="relative">
-                <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
-                  class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  :class="[getKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
-                  placeholder="Key Password" required :disabled="mainBusy">
-                <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
+              <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
+                :validation="getKeyPasswordError" placeholder="Key Password" required :disabled="mainBusy">
+                <template #tail>
                   <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
-                </div>
-              </div>
-              <p v-if="getKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                {{ getKeyPasswordError }}
-              </p>
+                </template>
+              </LightInput>
             </div>
             <div class="w-full">
               <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                 Confrim Key Password
               </label>
-              <div class="relative">
-                <input :type="showPassword ? 'text' : 'password'" id="password-address" v-model="confirmKeyPassword"
-                  class="transition duration-200 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pe-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  :class="[getConfirmKeyPasswordError ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : '']"
-                  placeholder="Key Password" required :disabled="mainBusy">
-                <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5">
+              <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="confirmKeyPassword"
+                :validation="getConfirmKeyPasswordError" placeholder="Key Password" required :disabled="mainBusy">
+                <template #tail>
                   <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
-                </div>
-              </div>
-              <p v-if="getConfirmKeyPasswordError" class="mt-2 text-xs text-red-900 dark:text-gray-500">
-                {{ getConfirmKeyPasswordError }}
-              </p>
+                </template>
+              </LightInput>
             </div>
             <div>
               <LightButton class="mx-auto" :disabled="mainBusy || !isFormValid" @click="generateKey">Generate
@@ -111,8 +91,8 @@
                 <div class="flex-1">
                   {{ key }}
                 </div>
-                <a :href="fileURI[key]" :download="key" class="inline-block">
-                  <ArrowDownTrayIcon class="w-4 h-4 cursor-pointer" title="Download File" />
+                <a :href="fileURI[key]" :download="key" class="inline-block" title="Download File">
+                  <ArrowDownTrayIcon class="w-4 h-4 cursor-pointer" />
                 </a>
               </div>
             </div>
@@ -125,13 +105,13 @@
 
 <script setup lang="ts">
 import LoadingContainer from "./LoadingContainer.vue"
+import LightInput from "./LightInput.vue"
 import LightButton from "./LightButton.vue"
 import PasswordToggler from "./PasswordToggler.vue"
 import { MapPinIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/solid'
 
 import { ref, onMounted, computed, Ref } from 'vue';
 import { isAddress } from "ethers"
-import { initFlowbite } from 'flowbite'
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
@@ -226,14 +206,12 @@ function toHome() {
 }
 
 onMounted(() => {
-  initFlowbite();
-
   window.ipcRenderer.on("generateKeysStatus", (err, ...args) => {
     loadingMessage.value = args[0] as string;
   })
 
   window.ipcRenderer.on("generateKeysResponse", (err, ...args) => {
-    const [resError, response] = args as [Error | null, GenerateKeyResponse | undefined];
+    const [resError, response] = args as [string | null, GenerateKeyResponse | undefined];
     if (resError) {
       // show error
       console.error(resError);
