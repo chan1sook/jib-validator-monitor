@@ -1,7 +1,11 @@
 <template>
   <div class="inline-block">
-    <CheckIcon v-if="props.checked" class="w-4 h-" />
-    <XMarkIcon v-else class="w-4 h-4" />
+    <slot v-if="props.checked">
+      <CheckIcon class="w-4 h-4" />
+    </slot>
+    <slot v-else name="no">
+      <XMarkIcon class="w-4 h-4" />
+    </slot>
   </div>
 </template>
 

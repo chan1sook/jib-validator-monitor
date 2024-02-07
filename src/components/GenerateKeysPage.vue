@@ -82,18 +82,32 @@
               <LightButton v-if="generateResult" class="mx-auto" @click="copyText(generateResult.mnemonic)">Copy
               </LightButton>
             </div>
-            <h4 class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
-              Files:
-            </h4>
+            <div class="w-full flex flex-row items-end mb-2">
+              <h4 class="block flex-1 text-sm font-bold text-gray-900 dark:text-white">
+                Files:
+              </h4>
+              <a v-if="!zipBusy" :href="zipURI" download="jbc-deposit-keystore.zip">
+                <LightButton>Download Zip</LightButton>
+              </a>
+              <LightButton v-else disabled>Zipping...</LightButton>
+            </div>
             <div class="w-full flex flex-col divide-y-2">
               <div v-for="key of Object.keys(generateResult.contents)"
                 class="py-1 w-full flex flex-row items-center gap-x-2">
                 <div class="flex-1">
                   {{ key }}
                 </div>
-                <a :href="fileURI[key]" :download="key" class="inline-block" title="Download File">
+                <a :href="fileURI[key]" :download="key" class="inline-block" title="Download File"
+                  @click="fileDownloaded.add(key)">
                   <ArrowDownTrayIcon class="w-4 h-4 cursor-pointer" />
                 </a>
+                <div>
+                  <Checkmark :checked="fileDownloaded.has(key)">
+                    <template #no>
+                      <span class="w-4 h-4 inline-block"></span>
+                    </template>
+                  </Checkmark>
+                </div>
               </div>
             </div>
           </div>
@@ -108,10 +122,12 @@ import LoadingContainer from "./LoadingContainer.vue"
 import LightInput from "./LightInput.vue"
 import LightButton from "./LightButton.vue"
 import PasswordToggler from "./PasswordToggler.vue"
+import Checkmark from "./Checkmark.vue"
 import { MapPinIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/solid'
 
 import { ref, onMounted, computed, Ref } from 'vue';
 import { isAddress } from "ethers"
+import JSZip from 'jszip'
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
@@ -120,8 +136,11 @@ const emit = defineEmits<{
 const mainBusy = ref(false);
 const loadingMessage = ref("Check Dependencies...");
 const generateResult: Ref<GenerateKeyResponse | undefined> = ref(undefined);
+const fileDownloaded = ref(new Set<string>());
 const lastestError = ref("");
 const fileURI: Ref<Record<string, string>> = ref({});
+const zipBusy = ref(false);
+const zipURI: Ref<string | undefined> = ref(undefined);
 
 const nodeCount = ref(1);
 const withdrawAddress = ref("");
@@ -183,6 +202,31 @@ async function copyText(text: string) {
   }
 }
 
+async function buildZipFile(generateResult?: GenerateKeyResponse) {
+  if (!generateResult) {
+    return;
+  }
+
+  zipBusy.value = true;
+  try {
+    const zipFile = new JSZip();
+    zipFile.file("mnemonic.txt", generateResult.mnemonic);
+    for (const filename of Object.keys(generateResult.contents)) {
+      zipFile.file(filename, generateResult.contents[filename]);
+    }
+
+    const blob = await zipFile.generateAsync({ type: "blob" });
+
+    if (zipURI.value) {
+      URL.revokeObjectURL(zipURI.value);
+    }
+    zipURI.value = URL.createObjectURL(blob);
+  } catch (err) {
+    console.error(err);
+  }
+  zipBusy.value = false;
+}
+
 function generateFileURIs(contents: Record<string, string> | undefined) {
   if (!contents) {
     return;
@@ -218,6 +262,7 @@ onMounted(() => {
       lastestError.value = "Can't generate validator keys";
     } else {
       generateFileURIs(response?.contents);
+      buildZipFile(response);
       generateResult.value = response;
     }
     mainBusy.value = false;

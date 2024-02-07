@@ -34,7 +34,7 @@ const tempBasePath = process.env.VITE_DEV_SERVER_URL
   ? join(process.env.DIST_ELECTRON, "../.temp/") : "/tmp/";
 
 process.env.LIGHTHOUSE_EXEC_PATH = join(tempBasePath, ".lighthouse");
-process.env.VC_KEYGEN_TEMP = join(tempBasePath, ".vc-keygen");
+process.env.JBC_KEYGEN_EXEC_PATH = join(tempBasePath, ".jib-keygen");
 process.env.VC_DEPLOY_TEMP = join(tempBasePath, ".vc-deployer");
 process.env.JBC_SIREN_TEMP = join(tempBasePath, ".jib-siren");
 process.env.VC_KEYS_PATH = join(homedir(), ".jib-lighthouse");
@@ -142,7 +142,7 @@ ipcMain.on("getPaths", async (_ev, ...args) => {
   win?.webContents.send("getPathsResponse", {
     VITE_PUBLIC: process.env.VITE_PUBLIC,
     LIGHTHOUSE_EXEC_PATH: process.env.LIGHTHOUSE_EXEC_PATH,
-    VC_KEYGEN_TEMP: process.env.VC_KEYGEN_TEMP,
+    JBC_KEYGEN_EXEC_PATH: process.env.JBC_KEYGEN_EXEC_PATH,
     VC_DEPLOY_TEMP: process.env.VC_DEPLOY_TEMP,
     VC_KEYS_PATH: process.env.VC_KEYS_PATH,
   });

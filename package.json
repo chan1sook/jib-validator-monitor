@@ -1,6 +1,6 @@
 {
   "name": "jib-validator-monitor",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "main": "dist-electron/main/index.js",
   "description": "JIB Validator Monitor",
   "author": "Natthawat Raocharoensinp",
@@ -37,6 +37,7 @@
     "@heroicons/vue": "^2.1.1",
     "colors": "^1.4.0",
     "ethers": "^6.10.0",
+    "jszip": "^3.10.1",
     "string-replace-all": "^2.0.0",
     "sudo-prompt-alt": "^9.3.0",
     "validator": "^13.11.0"

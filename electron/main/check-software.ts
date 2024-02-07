@@ -1,6 +1,5 @@
 import { basicExec } from "./exec";
 import { readProgramConfig } from "./fs";
-import { getPythonCmd } from "./constant";
 
 export async function checkDockerVersion(): Promise<string | undefined> {
   try {
@@ -17,6 +16,23 @@ export async function checkDockerVersion(): Promise<string | undefined> {
   }
 }
 
+
+export async function checkCurlVersion(): Promise<string | undefined> {
+  try {
+    const { stdout } = await basicExec("curl", ["-V"]);
+    const result = /^curl ([0-9\.]+)/.exec(stdout);
+
+    if (result) {
+      return result[1];
+    } else {
+      throw new Error("Not found");
+    }
+  } catch (err) {
+    return undefined;
+  }
+}
+
+
 export async function checkGitVersion(): Promise<string | undefined> {
   try {
     const { stdout } = await basicExec("git", ["--version"]);
@@ -28,59 +44,6 @@ export async function checkGitVersion(): Promise<string | undefined> {
       throw new Error("Not found");
     }
   } catch (err) {
-    return undefined;
-  }
-}
-
-export async function checkPythonVersion(): Promise<string | undefined> {
-  try {
-    const { stdout } = await basicExec(getPythonCmd(), ["--version"]);
-
-    const result = /^Python ([0-9\.]+)/.exec(stdout);
-    if (result) {
-      return result[1];
-    } else {
-      throw new Error("Not found");
-    }
-  } catch (err) {
-    console.error(err);
-
-    return undefined;
-  }
-}
-
-// not used
-// export async function checkPythonVenvExists(): Promise<boolean> {
-//   try {
-//     const venvPackageName = `${getPythonCmd()}-venv`;
-//     const { stdout } = await basicExec("apt", ["list", "--installed", venvPackageName]);
-
-//     if (stdout.includes(venvPackageName)) {
-//       return true;
-//     } else {
-//       return false;
-//     }
-//   } catch (err) {
-//     console.error(err);
-
-//     return false;
-//   }
-// }
-
-
-export async function checkPipVersion(): Promise<string | undefined> {
-  try {
-    const { stdout } = await basicExec("pip", ["--version"]);
-
-    const result = /^pip ([0-9\.]+)/.exec(stdout);
-    if (result) {
-      return result[1];
-    } else {
-      throw new Error("Not found");
-    }
-  } catch (err) {
-    console.error(err);
-
     return undefined;
   }
 }

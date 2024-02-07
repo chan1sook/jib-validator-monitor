@@ -1,7 +1,7 @@
 import Event from "node:events";
 
-import { checkGitVersion, checkPipVersion, checkPythonVersion } from "./check-software";
-import { getPythonCmd } from "./constant";
+import { checkCurlVersion, checkGitVersion } from "./check-software";
+import { getJbcDepositKeygenUrl, getLocalJbcDepositKeygenPath } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -12,29 +12,26 @@ export const generateKeysStatusEvent = new Event();
 
 const generateKeyLogger = getCustomLogger("generateKeys", generateKeysStatusEvent);
 
+// TODO: use precompile
 export async function generateKeys(qty: number, withdrawAddress: string, keyPassword: string) {
   try {
     generateKeyLogger.emitWithLog("Check Softwares");
 
     // check softwares
-    const [gitVersion, pythonVersion, pipVersion] = await Promise.all([
+    const [gitVersion, curlVersion] = await Promise.all([
       checkGitVersion(),
-      checkPythonVersion(),
-      checkPipVersion(),
+      checkCurlVersion(),
     ]);
     generateKeyLogger.logDebug("Git", gitVersion);
-    generateKeyLogger.logDebug("Python", pythonVersion);
-    generateKeyLogger.logDebug("pip", pipVersion);
+    generateKeyLogger.logDebug("cURL", curlVersion);
 
     const sofewareNeeds: string[] = [];
     if (!gitVersion) {
       sofewareNeeds.push("git");
     }
-    if (!pythonVersion) {
-      sofewareNeeds.push(getPythonCmd());
-    }
-    if (!pipVersion) {
-      sofewareNeeds.push(`${getPythonCmd()}-pip`);
+
+    if (!curlVersion) {
+      sofewareNeeds.push("curl");
     }
 
     if (sofewareNeeds.length > 0) {
@@ -48,48 +45,40 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       generateKeyLogger.logDebug("Softwares Installed");
     }
 
-    generateKeyLogger.logInfo("VC_KEYGEN_TEMP", process.env.VC_KEYGEN_TEMP);
+    generateKeyLogger.logInfo("JBC_KEYGEN_EXEC_PATH", process.env.JBC_KEYGEN_EXEC_PATH);
 
-    const runFilename = "./deposit.sh"
-    const hasRuntimeExits = await isFileExists(path.join(process.env.VC_KEYGEN_TEMP, runFilename));
+    const runtimePath = getLocalJbcDepositKeygenPath();
+    const hasRuntimeExits = await isFileExists(runtimePath);
 
     if(!hasRuntimeExits) {
-      // download git & run python 3
-      generateKeyLogger.emitWithLog("Clone Git");
+      // download git
+      generateKeyLogger.emitWithLog("Download JBC Deposit File");
   
-      await fs.mkdir(process.env.VC_KEYGEN_TEMP, { recursive: true });
-      await basicExec("git", [
-        "clone",
-        "https://github.com/jibchain-net/deposit-cli.git",
-        process.env.VC_KEYGEN_TEMP,
+      await fs.mkdir(process.env.JBC_KEYGEN_EXEC_PATH, { recursive: true });
+      await basicExec("curl", [
+        "-L",
+        getJbcDepositKeygenUrl(),
+        "-o",
+        "deposit",
+      ], {
+        cwd: process.env.JBC_KEYGEN_EXEC_PATH,
+      });
+
+      // set it excutable
+      await basicExec("chmod", [
+        "+x",
+        runtimePath,
       ]);
 
-      generateKeyLogger.emitWithLog("Install Python Dependency");
-
-      await basicExec("pip3", [
-        "install",
-        "-r",
-        "requirements.txt",
-      ], {
-        cwd: process.env.VC_KEYGEN_TEMP,
-      });
-
-      await basicExec("pip3", [
-        "install",
-        ".",
-      ], {
-        cwd: process.env.VC_KEYGEN_TEMP,
-      });
-
-      generateKeyLogger.logDebug("Script Installed");
+      generateKeyLogger.logDebug("File Downloaded");
     } else {
-      generateKeyLogger.logDebug("Use Cached Script");
+      generateKeyLogger.logDebug("Use Cached File");
     }
     
     generateKeyLogger.emitWithLog("Generate Keys");
 
     // Clear old generated file
-    const keysPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys");
+    const keysPath = path.join(process.env.JBC_KEYGEN_EXEC_PATH, ".keys");
     try {
       await fs.rm(keysPath, {
         recursive: true,
@@ -101,7 +90,11 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     await fs.mkdir(keysPath, { recursive: true });
   
     const genKey = new Promise<GenerateKeyResponse>((resolve, reject) => {
-      const genKeyProcess = spawnProcess(runFilename, [
+      let checkfileWorker : NodeJS.Timeout | undefined;
+      let cachedProcess = "";
+      const exportPath = path.join(process.env.JBC_KEYGEN_EXEC_PATH, ".keys/validator_keys");
+      
+      const genKeyProcess = spawnProcess("./deposit", [
         "--non_interactive",
         "new-mnemonic",
         `--num_validators=${qty}`,
@@ -109,9 +102,9 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
         "--chain=jib",
         `--eth1_withdrawal_address=${withdrawAddress}`,
         `--keystore_password=${keyPassword}`,
-        "--folder=.keys",
+        `--folder=${keysPath}`,
       ], {
-        cwd: process.env.VC_KEYGEN_TEMP,
+        cwd: process.env.JBC_KEYGEN_EXEC_PATH,
         timeout: 60 * 60 * 1000,
       })
 
@@ -152,6 +145,20 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           out = "";
           genKeyProcess.stdin.write(`${mnemonic}\n`);
           step += 1;
+
+          checkfileWorker = setInterval(async () => {
+            try {
+              const files = await fs.readdir(exportPath);
+              const percents = files.length * 100 / (qty + 2);
+              const processText = `Generate Keys: ${files.length}/${qty + 2} (${percents.toFixed(2)}%)`;
+              if(cachedProcess !== processText) {
+                cachedProcess = processText;
+                generateKeyLogger.emitWithLog(processText);
+              }
+            } catch(err) {
+
+            }
+          }, 100);
         }
       })
 
@@ -160,11 +167,12 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       })
 
       genKeyProcess.on("exit", async (code, signal) => {
+        clearInterval(checkfileWorker);
+  
         if (code === 0) {
           generateKeyLogger.logDebug("Read Keys");
           
           // read content
-          const exportPath = path.join(process.env.VC_KEYGEN_TEMP, ".keys/validator_keys");
           const files = await fs.readdir(exportPath);
           const contents = {};
           for (const file of files) {
@@ -177,7 +185,10 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
         }
       })
 
-      genKeyProcess.on("error", reject);
+      genKeyProcess.on("error", (err) => {
+        clearInterval(checkfileWorker);
+        reject(err);
+      });
     });
 
     const result = await genKey;

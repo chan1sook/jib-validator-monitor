@@ -1,12 +1,17 @@
 import path from "node:path";
 
-export function getPythonCmd() {
-  return "python3";
-}
-
 //##### config
 export function programConfigPath() {
   return path.join(process.env.VC_KEYS_PATH, "config.json");
+}
+
+//##### keygen
+export function getJbcDepositKeygenUrl() {
+  return "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit";
+}
+
+export function getLocalJbcDepositKeygenPath() {
+  return path.join(process.env.JBC_KEYGEN_EXEC_PATH, "deposit");
 }
 
 //##### lighthouse
@@ -44,7 +49,6 @@ export function getJbcSirenDownloadUrl() {
 export function jbcSirenDockerComposePath() {
   return path.join(process.env.VC_KEYS_PATH, "jbc-siren.yaml");
 }
-
 
 export function getLocalJbcSirenDockerImagePath() {
   return path.join(process.env.JBC_SIREN_TEMP, "jbc-siren.tar");
