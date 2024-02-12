@@ -164,15 +164,15 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
 
         if (step === 1 && out.includes("Enter the keystore password for validator in")) {
           out = "";
-          exitVcProcess.stdin.write(`${keyPassword}\n\n`);
+          exitVcProcess.stdin.write(`${keyPassword}\n`);
           step += 1;
         }
 
-        // if (step === 1 && out.includes("Enter the keystore password, or press enter to omit it:")) {
-        //   out = "";
-        //   vcExitProcess.stdin.write(`${keyPassword}\n\n`);
-        //   step += 1;
-        // }
+        if (step === 2 && out.includes("Enter the exit phrase from the above URL to confirm the voluntary exit:")) {
+          out = "";
+          exitVcProcess.stdin.write(`Exit my validator\n`);
+          step += 1;
+        }
       });
 
       exitVcProcess.stdout.on("data", (data) => {
@@ -181,18 +181,28 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
 
       exitVcProcess.on("exit", async (code, signal) => {
         if (code === 0) {
-          // const importResult: DeployKeyResult = {
-          //   imported: undefined,
-          //   skipped: undefined,
-          //   apiToken: undefined,
-          // }
-          // const captureOutText = /Successfully imported ([0-9]+) validators? \(([0-9]+) skipped\)\./.exec(out);
-          // if (captureOutText) {
-          //   importResult.imported = parseInt(captureOutText[1], 10);
-          //   importResult.skipped = parseInt(captureOutText[2], 10);
-          // }
+          const result : ExitValidatorResult = {
+            currentEpoch: undefined,
+            exitEpoch: undefined,
+            withdrawableEpoch: undefined,
+            exitTs: undefined,
+          }
 
-          resolve("");
+          const epochRegexResult = /Current epoch: ([1-9][0-9]*), Exit epoch: ([1-9][0-9]*), Withdrawable epoch: ([1-9][0-9]*)/.exec(out);
+          
+          if(epochRegexResult) {
+            result.currentEpoch = parseInt(epochRegexResult[1], 10);
+            result.exitEpoch = parseInt(epochRegexResult[2], 10);
+            result.withdrawableEpoch = parseInt(epochRegexResult[3], 10);
+          }
+
+          const exitTimeResult = /Exit epoch in approximately ([1-9][0-9]*) secs/.exec(out);
+
+          if(exitTimeResult) {
+            result.exitTs = Date.now() + parseInt(exitTimeResult[1], 10) * 1000;
+          }
+
+          resolve(result);
         } else {
           const tokens = out.split('\n').filter((str) => !!str);
           const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);

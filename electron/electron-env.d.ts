@@ -44,3 +44,10 @@ interface DeployKeyResult {
   apiToken?: string
   apiPort?: number
 }
+
+interface ExitValidatorResult {
+  currentEpoch: number | undefined
+  exitEpoch: number | undefined
+  withdrawableEpoch: number | undefined
+  exitTs: number | undefined
+}

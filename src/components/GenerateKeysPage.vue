@@ -259,7 +259,7 @@ onMounted(() => {
     if (resError) {
       // show error
       console.error(resError);
-      lastestError.value = "Can't generate validator keys";
+      lastestError.value = resError || "Can't generate validator keys";
     } else {
       generateFileURIs(response?.contents);
       buildZipFile(response);

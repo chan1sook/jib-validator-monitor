@@ -355,7 +355,7 @@ onMounted(() => {
     if (resError) {
       // show error
       console.error(resError);
-      lastestError.value = "Can't deploy validators";
+      lastestError.value = resError || "Can't deploy validators";
     } else {
       deployResult.value = response;
     }

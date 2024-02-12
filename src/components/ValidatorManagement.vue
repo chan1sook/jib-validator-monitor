@@ -79,10 +79,7 @@
                         <th scope="col" class="px-4 py-2 w-8">
                           Dora
                         </th>
-                        <!-- Disabled Temporary -->
-                        <th v-if="false" scope="col" class="px-4 py-2 w-8">
-                          Action
-                        </th>
+                        <th scope="col" class="px-4 py-2 w-8"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -123,11 +120,10 @@
                             </a>
                           </div>
                         </td>
-                        <!-- Disabled Temporary -->
-                        <td v-if="false" class="px-4 py-2 relative">
+                        <td class="px-4 py-2 relative">
                           <div class="absolute inset-0 flex flex-row justify-center items-center">
-                            <ArrowUturnLeftIcon class="w-4 h-4 cursor-pointer" @click="popupExitValidator(validator)"
-                              title="Exit Validator" />
+                            <img src="../assets/exit-svgrepo-com.svg" class="w-4 h-4 cursor-pointer" draggable="false"
+                              title="Exit Validator" @click="popupExitValidator(validator)" />
                           </div>
                         </td>
                       </tr>
@@ -193,11 +189,38 @@
         <LightModal v-if="exitVcBusy" no-close>
           <LoadingContainer>{{ loadingMessage }}</LoadingContainer>
         </LightModal>
-        {{ toastError }}
-        <LightModal v-if="toastError" @close="toastError = ''">
+
+        <LightModal v-if="exitVcError" @close="exitVcError = ''">
           <template #header>Error</template>
           <div class="break-all">
-            {{ toastError }}
+            {{ exitVcError }}
+          </div>
+        </LightModal>
+        <LightModal v-if="exitVcResult" @close="exitVcResult = undefined">
+          <template #header>Exit VC Successful</template>
+          <div class=""></div>
+          <div class="flex flex-col gap-y-1 items-start">
+            <div class="flex flex-row gap-x-2">
+              <div class="font-bold whitespace-nowrap">Pubkey: </div>
+              <div class="flex-1">{{ exitVcResult.pubkey || '?' }}</div>
+            </div>
+
+            <div class="flex flex-row gap-x-2">
+              <div class="font-bold whitespace-nowrap">Current Epoch: </div>
+              <div class="flex-1">{{ exitVcResult.currentEpoch || '?' }}</div>
+            </div>
+            <div class="flex flex-row gap-x-2">
+              <div class="font-bold whitespace-nowrap">Exit Epoch: </div>
+              <div class="flex-1">{{ exitVcResult.exitEpoch || '?' }}</div>
+            </div>
+            <div class="flex flex-row gap-x-2">
+              <div class="font-bold whitespace-nowrap">Withdrawable Epoch: </div>
+              <div class="flex-1">{{ exitVcResult.withdrawableEpoch || '?' }}</div>
+            </div>
+            <div class="flex flex-row gap-x-2">
+              <div class="font-bold whitespace-nowrap">Est. Exit After: </div>
+              <div class="flex-1">{{ formatDate(exitVcResult.exitTs) }}</div>
+            </div>
           </div>
         </LightModal>
       </div>
@@ -215,7 +238,8 @@ import LedStatus from "./LedStatus.vue"
 import LightModal from "./LightModal.vue"
 
 import { Ref, computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ArrowTopRightOnSquareIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon, PauseIcon, PlayIcon, ArrowUturnLeftIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { ArrowTopRightOnSquareIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon, PauseIcon, PlayIcon } from '@heroicons/vue/24/solid'
+import dayjs from "dayjs"
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
@@ -226,7 +250,7 @@ const apiBusy = ref(false);
 const exitVcBusy = ref(false);
 const loadingMessage = ref("Load Lighhouse Api Keys...");
 const lastestError = ref("");
-const toastError = ref("");
+const exitVcError = ref("");
 
 const lighhouseApiData: Ref<LighhouseApiData | undefined> = ref(undefined);
 const validatorList: Ref<ValidatorData[]> = ref([]);
@@ -281,6 +305,7 @@ const validatorActiveLength = computed(() => {
 const exitValidatorTarget: Ref<ValidatorData | undefined> = ref(undefined);
 const keyPassword = ref("");
 const showPassword = ref(false);
+const exitVcResult: Ref<ExitValidatorResult & { pubkey?: string } | undefined> = ref(undefined);
 
 const getKeyPasswordError = computed(() => {
   if (keyPassword.value === "") {
@@ -454,6 +479,14 @@ async function exitValidator(validator: ValidatorData) {
   closeExitValidatorPopup();
 }
 
+function formatDate(d: number | undefined) {
+  if (typeof d === 'undefined') {
+    return '?';
+  }
+
+  return dayjs(d).format("D MMMM YYYY HH:mm:ss");
+}
+
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -486,12 +519,20 @@ onMounted(() => {
   })
 
   window.ipcRenderer.on('exitValidatorResponse', (_event, ...args) => {
-    const [resError, pubkey, response] = args as [string | null, string, string];
+    const [resError, pubkey, response] = args as [string | null, string, ExitValidatorResult | undefined];
+
+    exitVcResult.value = {
+      currentEpoch: response?.currentEpoch,
+      exitEpoch: response?.exitEpoch,
+      withdrawableEpoch: response?.withdrawableEpoch,
+      exitTs: response?.exitTs,
+      pubkey,
+    }
 
     if (resError) {
       // show error
       console.error(resError);
-      toastError.value = resError || "Can't exit validators";
+      exitVcError.value = resError || "Can't exit validators";
     }
 
     waitChangeValidator.value.delete(pubkey);

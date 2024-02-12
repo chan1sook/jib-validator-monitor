@@ -265,7 +265,9 @@ export async function deployValidators(keyFileContent: Record<string, string>,
 
           resolve(importResult);
         } else {
-          reject(new Error(`Exit code:${code}`));
+          const tokens = out.split('\n').filter((str) => !!str);
+          const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);
+          reject(err);
         }
       })
 

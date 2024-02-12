@@ -42,6 +42,13 @@ interface ValidatorData {
   enabled: bool
 }
 
+interface ExitValidatorResult {
+  currentEpoch: number | undefined
+  exitEpoch: number | undefined
+  withdrawableEpoch: number | undefined
+  exitTs: number | undefined
+}
+
 interface VcConfigData {
   apiToken?: string
   apiPort?: number

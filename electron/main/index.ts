@@ -246,8 +246,8 @@ ipcMain.on("exitValidator", async (_ev, ...args) => {
   const [pubkey, keyPassword] = args as [string, string];
 
   try {
-    await exitValidator(pubkey, keyPassword);
-    win?.webContents.send("exitValidatorResponse", null, pubkey);
+    const result = await exitValidator(pubkey, keyPassword);
+    win?.webContents.send("exitValidatorResponse", null, pubkey, result);
   } catch (err) {
     console.error(err);
     win?.webContents.send("exitValidatorResponse", err.message, pubkey);

@@ -181,7 +181,9 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           }
           resolve({ mnemonic, contents, exportPath });
         } else {
-          reject(new Error(`Exit code:${code}`));
+          const tokens = out.split('\n').filter((str) => !!str);
+          const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);
+          reject(err);
         }
       })
 

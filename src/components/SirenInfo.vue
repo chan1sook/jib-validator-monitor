@@ -217,7 +217,7 @@ onMounted(() => {
     if (resError) {
       // show error
       console.error(resError);
-      lastestError.value = "Can't deploy validators";
+      lastestError.value = resError || "Can't deploy Siren";
     } else {
       deployResult.value = response;
     }
