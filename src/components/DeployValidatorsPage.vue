@@ -31,7 +31,8 @@
         </template>
         <template v-if="!mainBusy">
           <template v-if="!deployResult">
-            <div v-if="inputPage === 1" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
+            <form v-if="inputPage === 1" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1"
+              @submit.prevent="advanceToForm2">
               <div class="mt-2">
                 <LightButton :disabled="mainBusy" @click="selectVcKeyFiles">Select Files</LightButton>
               </div>
@@ -53,10 +54,11 @@
                 {{ getKeyFilesError }}
               </p>
               <div class="mt-4">
-                <LightButton :disabled="!!getKeyFilesError" @click="inputPage += 1">Next</LightButton>
+                <LightButton type="submit" :disabled="!!getKeyFilesError">Next</LightButton>
               </div>
-            </div>
-            <div v-else-if="inputPage === 2" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
+            </form>
+            <form v-else-if="inputPage === 2" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1"
+              @submit.prevent="deployValidators">
               <h4 class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                 Extra Information:
               </h4>
@@ -66,7 +68,8 @@
                     Machine Public IP
                   </label>
                   <LightInput type="text" id="machine-public-ip" v-model="machinePublicIp"
-                    :validation="getMachinePublicIpError" placeholder="eg xxx.xxx.xxx.xxx" required :disabled="mainBusy">
+                    :validation="getMachinePublicIpError" placeholder="eg xxx.xxx.xxx.xxx" required
+                    :disabled="mainBusy">
                     <template #lead="{ validation }">
                       <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400"
                         :class="[validation ? 'text-red-900' : '']" aria-hidden="true" />
@@ -74,7 +77,8 @@
                   </LightInput>
                 </div>
                 <div class="w-full">
-                  <label for="fee-recipient-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <label for="fee-recipient-address"
+                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     Fee Recipient Address
                   </label>
                   <LightInput type="text" id="fee-recipient-address" v-model="feeRecipientAddress"
@@ -135,9 +139,9 @@
                 </div>
               </template>
               <div class="mt-4">
-                <LightButton :disabled="!isFormValid" @click="deployValidators">Deploy!</LightButton>
+                <LightButton type="submit" :disabled="!isFormValid" @click="deployValidators">Deploy!</LightButton>
               </div>
-            </div>
+            </form>
           </template>
           <div v-else class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
             <h4 class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
@@ -303,6 +307,14 @@ function selectVcKeyFiles() {
 
 function removeFile(fileKey: string) {
   delete files.value[fileKey];
+}
+
+function advanceToForm2() {
+  if (!!getKeyFilesError.value) {
+    return;
+  }
+
+  inputPage.value += 1;
 }
 
 function deployValidators() {

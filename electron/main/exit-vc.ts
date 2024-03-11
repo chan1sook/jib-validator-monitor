@@ -1,12 +1,12 @@
 import Event from "node:events";
 
 import { checkGitVersion, } from "./check-software";
-import { getLighhouseDownloadUrl, getLocalLighthousePath } from "./constant";
+import { getChainConfigDir, getChainConfigGitSha256Checksum, getChainConfigPath, getLighhouseDownloadUrl, getLighhouseSha256Checksum, getLocalLighthousePath, isOverrideCheckFiles } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { getCustomLogger } from "./logger";
-import { isFileExists } from "./fs";
+import { calculateHash, isFileExists, isFileValid } from "./fs";
 
 export const exitValidatorsStatusEvent = new Event();
 
@@ -33,7 +33,9 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
 
       exitVcLogger.emitWithLog("Install Softwares");
 
-      await sudoExec(cmd);
+      exitVcLogger.injectExecTerminalLogs(
+        await sudoExec(cmd)
+      );
 
       exitVcLogger.logDebug("Softwares Installed");
     }
@@ -41,9 +43,10 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
     exitVcLogger.logInfo("VC_DEPLOY_TEMP", process.env.VC_DEPLOY_TEMP);
 
     // Get jibchain data
-    const chainConfigPath = path.join(process.env.VC_DEPLOY_TEMP, "config");
-    const hasChainConfigExits = await isFileExists(chainConfigPath);
-    if(!hasChainConfigExits) {
+    const chainConfigPath = getChainConfigPath();
+    const isChainConfigFileValid = !isOverrideCheckFiles() && await isFileValid(chainConfigPath, getChainConfigGitSha256Checksum());
+
+    if(!isChainConfigFileValid) {
       try {
         await fs.rm(process.env.VC_DEPLOY_TEMP, {
           recursive: true,
@@ -57,12 +60,16 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
 
       // download git
       exitVcLogger.emitWithLog("Clone Jibchain Script Git");
-    
-      await basicExec("git", [
-        "clone",
-        "https://github.com/jibchain-net/node.git",
-        process.env.VC_DEPLOY_TEMP,
-      ]);
+      
+      exitVcLogger.injectExecTerminalLogs(
+        await basicExec("git", [
+          "clone",
+          "https://github.com/jibchain-net/node.git",
+          process.env.VC_DEPLOY_TEMP,
+        ]),
+      );
+
+      exitVcLogger.logDebug("sha256", await calculateHash(chainConfigPath));
     } else {
       exitVcLogger.logDebug("Use Cached Script");
     }
@@ -90,11 +97,10 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
     const vcKeyPath = path.join(vcKeyFolderPath, vcKeyFileNames[0]);
     exitVcLogger.logInfo("vcKeyPath", vcKeyPath);
 
-
-    
-
-    const hasLighthouseExists = await isFileExists(getLocalLighthousePath());
-    if(!hasLighthouseExists) {
+    const lhFilePath = getLocalLighthousePath();
+    const isLhFileValid = !isOverrideCheckFiles() && await isFileValid(lhFilePath, getLighhouseSha256Checksum());
+  
+    if(!isLhFileValid) {
       try {
         await fs.rm(process.env.LIGHTHOUSE_EXEC_PATH, {
           recursive: true,
@@ -109,25 +115,31 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
       exitVcLogger.emitWithLog("Download Lighthouse");
 
       // Create files
-      await basicExec("curl", [
-        "-L",
-        getLighhouseDownloadUrl(),
-        "-o",
-        "lighthouse.tar.gz",
-      ], {
-        cwd: process.env.LIGHTHOUSE_EXEC_PATH,
-      });
+      exitVcLogger.injectExecTerminalLogs(
+        await basicExec("curl", [
+          "-L",
+          getLighhouseDownloadUrl(),
+          "-o",
+          "lighthouse.tar.gz",
+        ], {
+          cwd: process.env.LIGHTHOUSE_EXEC_PATH,
+        })
+      );
   
       exitVcLogger.emitWithLog("Extract Lighthouse File");
-
-      await basicExec("tar", [
-        "-xvf",
-        "lighthouse.tar.gz",
-      ], {
-        cwd: process.env.LIGHTHOUSE_EXEC_PATH,
-      });
+      
+      exitVcLogger.injectExecTerminalLogs(
+        await basicExec("tar", [
+          "-xvf",
+          "lighthouse.tar.gz",
+        ], {
+          cwd: process.env.LIGHTHOUSE_EXEC_PATH,
+        }),
+      );
 
       exitVcLogger.logDebug("Lighthouse Downloaded");
+
+      exitVcLogger.logDebug("sha256", await calculateHash(lhFilePath));
     } else {
       exitVcLogger.logDebug("Use Cached File");
     }
@@ -145,7 +157,7 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
         "--keystore",
         vcKeyPath,
         "--testnet-dir",
-        chainConfigPath,
+        getChainConfigDir(),
         "--beacon-node",
         "https://metrabyte-cl.jibchain.net/",
         "--stdin-inputs"
@@ -159,6 +171,7 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
 
       // lighthouse account imnport out as stderr
       exitVcProcess.stderr.on("data", (data) => {
+        exitVcLogger.injectTerminalLog(data.toString());
         out += data.toString();
         exitVcLogger.logInfo(`Step : ${step}`, out);
 

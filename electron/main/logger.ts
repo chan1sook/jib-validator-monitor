@@ -20,11 +20,22 @@ export function getCustomLogger(key: string, ev: Event) {
     ev.emit(evName, msg);
     logDebug(msg);
   }
+  
+  const injectTerminalLog = (log : string) => {
+    ev.emit("terminalLogs", log);
+  } 
+
+  const injectExecTerminalLogs = (execOut : { stdout: string, stderr: string }) => {
+    injectTerminalLog(execOut.stdout || execOut.stderr);
+  }
+
   return Object.freeze({
     logDebug,
     logInfo,
     logSuccess,
     logFailed,
     emitWithLog,
+    injectTerminalLog,
+    injectExecTerminalLogs,
   });
 }

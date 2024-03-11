@@ -39,7 +39,7 @@ interface DeployKeyResult {
 interface ValidatorData {
   voting_pubkey: string
   description: string
-  enabled: bool
+  enabled: boolean
 }
 
 interface ExitValidatorResult {

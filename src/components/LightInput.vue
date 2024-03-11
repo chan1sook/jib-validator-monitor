@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { InputTypeHTMLAttribute, computed, useSlots } from 'vue';
+import { type InputTypeHTMLAttribute, computed, useSlots } from 'vue';
 
 const props = defineProps<{
   type?: InputTypeHTMLAttribute,

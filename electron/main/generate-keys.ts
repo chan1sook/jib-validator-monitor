@@ -1,18 +1,17 @@
 import Event from "node:events";
 
 import { checkCurlVersion, checkGitVersion } from "./check-software";
-import { getJbcDepositKeygenUrl, getLocalJbcDepositKeygenPath } from "./constant";
+import { getJbcDepositKeygenUrl, getJbcDepositSha256Checksum, getLocalJbcDepositKeygenPath, isOverrideCheckFiles } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { isFileExists } from "./fs";
+import { calculateHash, isFileValid } from "./fs";
 import { getCustomLogger } from "./logger";
 
 export const generateKeysStatusEvent = new Event();
 
 const generateKeyLogger = getCustomLogger("generateKeys", generateKeysStatusEvent);
 
-// TODO: use precompile
 export async function generateKeys(qty: number, withdrawAddress: string, keyPassword: string) {
   try {
     generateKeyLogger.emitWithLog("Check Softwares");
@@ -37,44 +36,56 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     if (sofewareNeeds.length > 0) {
       generateKeyLogger.emitWithLog("Install Softwares");
 
-      await sudoExec(
-      `apt-get update
-      apt-get install ${sofewareNeeds.join(' ')} -y
-      `);
+      generateKeyLogger.injectExecTerminalLogs(
+        await sudoExec(
+        `apt-get update
+        apt-get install ${sofewareNeeds.join(' ')} -y
+        `),
+      );
 
       generateKeyLogger.logDebug("Softwares Installed");
     }
 
     generateKeyLogger.logInfo("JBC_KEYGEN_EXEC_PATH", process.env.JBC_KEYGEN_EXEC_PATH);
 
-    const runtimePath = getLocalJbcDepositKeygenPath();
-    const hasRuntimeExits = await isFileExists(runtimePath);
+    const keygenFilePath = getLocalJbcDepositKeygenPath();
+    const isKeygenFileValid = !isOverrideCheckFiles() && 
+      await isFileValid(keygenFilePath, getJbcDepositSha256Checksum());
 
-    if(!hasRuntimeExits) {
-      // download git
+    if(!isKeygenFileValid) {
       generateKeyLogger.emitWithLog("Download JBC Deposit File");
-  
+      try {
+        await fs.rm(process.env.JBC_KEYGEN_EXEC_PATH, { recursive: true, force: true })
+      } catch (err) {
+
+      }
       await fs.mkdir(process.env.JBC_KEYGEN_EXEC_PATH, { recursive: true });
-      await basicExec("curl", [
-        "-L",
-        getJbcDepositKeygenUrl(),
-        "-o",
-        "deposit",
-      ], {
-        cwd: process.env.JBC_KEYGEN_EXEC_PATH,
-      });
+      generateKeyLogger.injectExecTerminalLogs(
+        await basicExec("curl", [
+          "-L",
+          getJbcDepositKeygenUrl(),
+          "-o",
+          "deposit",
+        ], {
+          cwd: process.env.JBC_KEYGEN_EXEC_PATH,
+        }),
+      );
 
       // set it excutable
-      await basicExec("chmod", [
-        "+x",
-        runtimePath,
-      ]);
+      generateKeyLogger.injectExecTerminalLogs(
+        await basicExec("chmod", [
+          "+x",
+          keygenFilePath,
+        ]),
+      );
 
       generateKeyLogger.logDebug("File Downloaded");
+
+      generateKeyLogger.logDebug("sha256", await calculateHash(keygenFilePath));
     } else {
       generateKeyLogger.logDebug("Use Cached File");
     }
-    
+
     generateKeyLogger.emitWithLog("Generate Keys");
 
     // Clear old generated file
@@ -113,6 +124,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       let mnemonic = "";
 
       genKeyProcess.stdout.on("data", (data) => {
+        generateKeyLogger.injectTerminalLog(data.toString());
         out += data.toString();
 
         // generateKeyLogger.logInfo(`Step : ${step}`, out);
@@ -163,6 +175,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       })
 
       genKeyProcess.stderr.on("data", (data) => {
+        generateKeyLogger.injectTerminalLog(data.toString());
         console.log(data.toString());
       })
 

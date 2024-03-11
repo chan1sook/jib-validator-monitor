@@ -1,11 +1,11 @@
 import Event from "node:events";
 
 import { checkDockerVersion, checkGitVersion, } from "./check-software";
-import { getJbcSirenDownloadUrl, getLocalJbcSirenDockerImagePath, jbcSirenDockerComposeGroup, jbcSirenDockerComposePath } from "./constant";
+import { getJbcSirenDownloadUrl, getJbcSirenSha256Checksum, getLocalJbcSirenDockerImagePath, isOverrideCheckFiles, jbcSirenDockerComposeGroup, jbcSirenDockerComposePath } from "./constant";
 import { basicExec, sudoExec } from "./exec";
 import fs from "node:fs/promises";
 import { getCustomLogger } from "./logger";
-import { isFileExists, writeProgramConfig } from "./fs";
+import { calculateHash, isFileValid, writeProgramConfig } from "./fs";
 
 export const deployJbcSirenStatusEvent = new Event();
 
@@ -53,14 +53,18 @@ export async function deployJbcSiren(sirenPort: string) {
 
       deployJbcSirenLogger.emitWithLog("Install Softwares");
 
-      await sudoExec(cmd);
+      deployJbcSirenLogger.injectExecTerminalLogs(
+        await sudoExec(cmd)
+      );
 
       deployJbcSirenLogger.logDebug("Softwares Installed");
     };
 
+    const sirenImagePath = getLocalJbcSirenDockerImagePath();
+    const isSirenImageValid = !isOverrideCheckFiles() && 
+      await isFileValid(sirenImagePath, getJbcSirenSha256Checksum());
 
-    const hasImageExists = await isFileExists(getLocalJbcSirenDockerImagePath());
-    if(!hasImageExists) {
+    if(!isSirenImageValid) {
       try {
         await fs.rm(process.env.JBC_SIREN_TEMP, {
           recursive: true,
@@ -75,16 +79,20 @@ export async function deployJbcSiren(sirenPort: string) {
       deployJbcSirenLogger.emitWithLog("Download Image");
 
       // Create files
-      await basicExec("curl", [
-        "-L",
-        getJbcSirenDownloadUrl(),
-        "-o",
-        "jbc-siren.tar",
-      ], {
-        cwd: process.env.JBC_SIREN_TEMP,
-      });
+      deployJbcSirenLogger.injectExecTerminalLogs(
+        await basicExec("curl", [
+          "-L",
+          getJbcSirenDownloadUrl(),
+          "-o",
+          "jbc-siren.tar",
+        ], {
+          cwd: process.env.JBC_SIREN_TEMP,
+        }),
+      );
 
       deployJbcSirenLogger.logDebug("Image Downloaded");
+
+      deployJbcSirenLogger.logDebug("sha256", await calculateHash(sirenImagePath));
     } else {
       deployJbcSirenLogger.logDebug("Use Cached File");
     }
@@ -105,6 +113,10 @@ export async function deployJbcSiren(sirenPort: string) {
       `    image: jbc-siren\n` +
       `    user: root\n` +
       `    restart: unless-stopped\n` +
+      `    logging:\n` +
+      `      driver: "json-file"\n` +
+      `      options:\n` +
+      `        max-size: "50m"\n` +
       `    ports:\n` +
       `      - ${_sirenPort}:80\n`;
     await fs.writeFile(composePath, composeContent);
@@ -117,7 +129,9 @@ export async function deployJbcSiren(sirenPort: string) {
     docker compose -p "${dockerComposeProjectGroup}" -f "${composePath}" up -d
     `;
 
-    await sudoExec(installDockerScript);
+    deployJbcSirenLogger.injectExecTerminalLogs(
+      await sudoExec(installDockerScript)
+    );
 
     const deployResult = {
       sirenPort: _sirenPort,

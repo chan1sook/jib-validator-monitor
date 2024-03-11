@@ -1,12 +1,12 @@
 import Event from "node:events";
 
 import { checkDockerVersion, checkGitVersion, } from "./check-software";
-import { getLighhouseDownloadUrl, getLocalLighthousePath, validatorDockerComposeGroup, validatorDockerComposePath } from "./constant";
+import { getChainConfigDir, getChainConfigGitSha256Checksum, getChainConfigGitUrl, getChainConfigPath, getLighhouseDownloadUrl, getLighhouseSha256Checksum, getLocalLighthousePath, isOverrideCheckFiles, lighthouseImageTag, validatorDockerComposeGroup, validatorDockerComposePath } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
 import stringReplaceAll from 'string-replace-all';
-import { isFileExists, writeProgramConfig } from "./fs";
+import { calculateHash, isFileValid, writeProgramConfig } from "./fs";
 import { getCustomLogger } from "./logger";
 
 export const deployValidatorsStatusEvent = new Event();
@@ -60,7 +60,9 @@ export async function deployValidators(keyFileContent: Record<string, string>,
 
       deployVcLogger.emitWithLog("Install Softwares");
 
-      await sudoExec(cmd);
+      deployVcLogger.injectExecTerminalLogs(
+        await sudoExec(cmd)
+      );
 
       deployVcLogger.logDebug("Softwares Installed");
     }
@@ -69,28 +71,29 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     deployVcLogger.logInfo("VC_KEYS_PATH", process.env.VC_KEYS_PATH);
 
     // Get jibchain data (and script)
-    const chainConfigPath = path.join(process.env.VC_DEPLOY_TEMP, "config");
-    const hasChainConfigExits = await isFileExists(chainConfigPath);
-    if(!hasChainConfigExits) {
+    const chainConfigPath = getChainConfigPath();
+    const isChainConfigFileValid = !isOverrideCheckFiles() && await isFileValid(chainConfigPath, getChainConfigGitSha256Checksum());
+
+    if(!isChainConfigFileValid) {
       try {
-        await fs.rm(process.env.VC_DEPLOY_TEMP, {
-          recursive: true,
-          force: true,
-        });
+        await fs.rm(process.env.VC_DEPLOY_TEMP, { recursive: true, force: true, });
       } catch (err) {
   
       }
-    
       await fs.mkdir(process.env.VC_DEPLOY_TEMP, { recursive: true });
 
       // download git
       deployVcLogger.emitWithLog("Clone Jibchain Script Git");
     
-      await basicExec("git", [
-        "clone",
-        "https://github.com/jibchain-net/node.git",
-        process.env.VC_DEPLOY_TEMP,
-      ]);
+      deployVcLogger.injectExecTerminalLogs(
+        await basicExec("git", [
+          "clone",
+          getChainConfigGitUrl(),
+          process.env.VC_DEPLOY_TEMP,
+        ]),
+      );
+
+      deployVcLogger.logDebug("sha256", await calculateHash(chainConfigPath));
     } else {
       deployVcLogger.logDebug("Use Cached Script");
     }
@@ -131,7 +134,8 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     // Rewrite docker compose
     const vcKeyExportPath = path.join(process.env.VC_KEYS_PATH, "vc");
     const vcKeyMountPath = path.join(process.env.VC_KEYS_PATH, "vc-mount");
-    const configExportPath = path.join(process.env.VC_KEYS_PATH, "config");
+    const configExportPath = path.join(process.    
+      env.VC_KEYS_PATH, "config");
 
     let lighhouseApiPort = parseInt(advanceSetting.exposeLighhouseApiPort, 10);
     if(!Number.isInteger(lighhouseApiPort) || lighhouseApiPort <= 1024) {
@@ -142,9 +146,13 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       `services:\n` +
       `  jbc-validator:\n` +
       `    container_name: jbc-validator\n` +
-      `    image: sigp/lighthouse\n` +
+      `    image: ${lighthouseImageTag()}\n` +
       `    user: root\n` +
       `    restart: unless-stopped\n` +
+      `    logging:\n` +
+      `      driver: "json-file"\n` +
+      `      options:\n` +
+      `        max-size: "50m"\n` +
       `    ports:\n` +
       `      - ${lighhouseApiPort}:5062\n` +
       `    volumes:\n` +
@@ -167,8 +175,10 @@ export async function deployValidators(keyFileContent: Record<string, string>,
 
     deployVcLogger.logInfo("LIGHTHOUSE_EXEC_PATH", process.env.LIGHTHOUSE_EXEC_PATH);
 
-    const hasLighthouseExists = await isFileExists(getLocalLighthousePath());
-    if(!hasLighthouseExists) {
+    const lhFilePath = getLocalLighthousePath();
+    const isLhFileValid = !isOverrideCheckFiles() && await isFileValid(lhFilePath, getLighhouseSha256Checksum());
+
+    if(!isLhFileValid) {
       try {
         await fs.rm(process.env.LIGHTHOUSE_EXEC_PATH, {
           recursive: true,
@@ -183,25 +193,32 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       deployVcLogger.emitWithLog("Download Lighthouse");
 
       // Create files
-      await basicExec("curl", [
-        "-L",
-        getLighhouseDownloadUrl(),
-        "-o",
-        "lighthouse.tar.gz",
-      ], {
-        cwd: process.env.LIGHTHOUSE_EXEC_PATH,
-      });
+      deployVcLogger.injectExecTerminalLogs(
+        await basicExec("curl", [
+          "-L",
+          getLighhouseDownloadUrl(),
+          "-o",
+          "lighthouse.tar.gz",
+        ], {
+          cwd: process.env.LIGHTHOUSE_EXEC_PATH,
+        }),
+      );
   
       deployVcLogger.emitWithLog("Extract Lighthouse File");
-
-      await basicExec("tar", [
-        "-xvf",
-        "lighthouse.tar.gz",
-      ], {
-        cwd: process.env.LIGHTHOUSE_EXEC_PATH,
-      });
+      
+      
+      deployVcLogger.injectExecTerminalLogs(
+        await basicExec("tar", [
+          "-xvf",
+          "lighthouse.tar.gz",
+        ], {
+          cwd: process.env.LIGHTHOUSE_EXEC_PATH,
+        }),
+      );
 
       deployVcLogger.logDebug("Lighthouse Downloaded");
+
+      deployVcLogger.logDebug("sha256", await calculateHash(lhFilePath));
     } else {
       deployVcLogger.logDebug("Use Cached File");
     }
@@ -225,7 +242,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
         "--directory",
         tempKeyPath,
         "--testnet-dir",
-        chainConfigPath,
+        getChainConfigDir(),
         "--datadir",
         vcKeyExportPath,
         "--reuse-password",
@@ -240,6 +257,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
 
       // lighthouse account import out as stderr
       importKeyProcess.stderr.on("data", (data) => {
+        deployVcLogger.injectTerminalLog(data.toString());
         out += data.toString();
 
         // deployVcLogger.logInfo(`Step : ${step}`, out);
@@ -300,26 +318,30 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     const vcKeysCopyTargetPath = path.join(vcKeyMountPath, "custom");
     const dockerComposeProjectGroup = validatorDockerComposeGroup();
 
-    await sudoExec(`docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" down
-    docker container rm -f jbc-validator
-    cp -rf "${path.join(process.env.VC_DEPLOY_TEMP, "config")}" "${process.env.VC_KEYS_PATH}"
-    rm -rf "${vcKeysCopyTargetPath}"
-    mkdir -p "${vcKeysCopyTargetPath}"
-    cp -rf ${vcKeyExportPath}/* "${vcKeysCopyTargetPath}"
-    docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" up -d
-    `);
+    
+    deployVcLogger.injectExecTerminalLogs(
+      await sudoExec(`docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" down
+      docker container rm -f jbc-validator
+      cp -rf "${path.join(process.env.VC_DEPLOY_TEMP, "config")}" "${process.env.VC_KEYS_PATH}"
+      rm -rf "${vcKeysCopyTargetPath}"
+      mkdir -p "${vcKeysCopyTargetPath}"
+      cp -rf ${vcKeyExportPath}/* "${vcKeysCopyTargetPath}"
+      docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" up -d
+      `),
+    );
 
     // Write Config
     deployVcLogger.emitWithLog("Get API Token");
 
     // Rewrite Lighthouse API Key to rightful format
     const apiKeyPath = path.join(vcKeyMountPath, "custom/validators/api-token.txt");
-    const { stdout : apiToken } = await sudoExec(`cat "${apiKeyPath}"`);
-    importedResult.apiToken = apiToken;
+    const apiOut = await sudoExec(`cat "${apiKeyPath}"`);
+    deployVcLogger.injectExecTerminalLogs(apiOut);
+    importedResult.apiToken = apiOut.stdout;
     importedResult.apiPort = lighhouseApiPort;
 
     const lighhouseApiData = {
-      apiToken,
+      apiToken: apiOut.stdout,
       apiPort: lighhouseApiPort,
     }
     

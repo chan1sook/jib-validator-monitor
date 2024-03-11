@@ -2,7 +2,8 @@
   <div class="h-screen flex flex-col">
     <div class="w-full flex flex-row flex-wrap px-2 py-1 bg-white shadow-md border-b border-gray-200">
       <LightButton :disabled="mainBusy" @click="toHome">Back</LightButton>
-      <LightButton v-if="generateResult" class="ml-auto" @click="generateResult = undefined">Generate Again</LightButton>
+      <LightButton v-if="generateResult" class="ml-auto" @click="generateResult = undefined">Generate Again
+      </LightButton>
     </div>
     <div class="flex-1 overflow-y-auto">
       <div class="px-4 py-4 flex flex-col gap-y-2 items-center">
@@ -23,8 +24,10 @@
             {{ lastestError }}
           </h3>
         </template>
+
         <template v-if="!mainBusy">
-          <div v-if="!generateResult" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
+          <form v-if="!generateResult" class="max-w-md w-full flex flex-col justify-center items-center gap-y-1"
+            @submit.prevent="generateKey">
             <div class="w-full">
               <label for="node-count" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                 Number of Nodes:
@@ -50,6 +53,7 @@
               </label>
               <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
                 :validation="getKeyPasswordError" placeholder="Key Password" required :disabled="mainBusy">
+
                 <template #tail>
                   <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
                 </template>
@@ -61,16 +65,18 @@
               </label>
               <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="confirmKeyPassword"
                 :validation="getConfirmKeyPasswordError" placeholder="Key Password" required :disabled="mainBusy">
+
                 <template #tail>
                   <PasswordToggler :show-password="showPassword" @click="showPassword = !showPassword" />
                 </template>
               </LightInput>
             </div>
             <div>
-              <LightButton class="mx-auto" :disabled="mainBusy || !isFormValid" @click="generateKey">Generate
+              <LightButton type="submit" class="mx-auto" :disabled="mainBusy || !isFormValid">
+                Generate
               </LightButton>
             </div>
-          </div>
+          </form>
           <div v-else class="max-w-md w-full flex flex-col justify-center items-center gap-y-1">
             <h4 class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
               Mnemonic:
@@ -103,6 +109,7 @@
                 </a>
                 <div>
                   <Checkmark :checked="fileDownloaded.has(key)">
+
                     <template #no>
                       <span class="w-4 h-4 inline-block"></span>
                     </template>
@@ -189,6 +196,7 @@ function generateKey() {
 
   mainBusy.value = true;
   generateResult.value = undefined;
+  lastestError.value = "";
 
   window.ipcRenderer.send("generateKeys", nodeCount.value, withdrawAddress.value.trim(), keyPassword.value);
 }

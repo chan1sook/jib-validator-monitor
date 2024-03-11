@@ -39,6 +39,8 @@ process.env.VC_DEPLOY_TEMP = join(tempBasePath, ".vc-deployer");
 process.env.JBC_SIREN_TEMP = join(tempBasePath, ".jib-siren");
 process.env.VC_KEYS_PATH = join(homedir(), ".jib-lighthouse");
 
+// process.env.OVERRIDE_CHECK_FILES = "override";
+
 // Disable GPU Acceleration for Windows 7
 if (release().startsWith("6.1")) app.disableHardwareAcceleration();
 
@@ -51,6 +53,11 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
   process.exit(0);
 }
+process.env.LIGHTHOUSE_EXEC_PATH = join(tempBasePath, ".lighthouse");
+process.env.JBC_KEYGEN_EXEC_PATH = join(tempBasePath, ".jib-keygen");
+process.env.VC_DEPLOY_TEMP = join(tempBasePath, ".vc-deployer");
+process.env.JBC_SIREN_TEMP = join(tempBasePath, ".jib-siren");
+process.env.VC_KEYS_PATH = join(homedir(), ".jib-lighthouse");
 
 
 // Remove electron security warnings
@@ -70,7 +77,7 @@ async function createWindow() {
     icon: join(process.env.VITE_PUBLIC, "jbc-badge.png"),
     webPreferences: {
       preload,
-      devTools: !app.isPackaged,
+      devTools: false,
     },
     autoHideMenuBar: true,
   });
@@ -143,6 +150,7 @@ ipcMain.on("getPaths", async (_ev, ...args) => {
     VITE_PUBLIC: process.env.VITE_PUBLIC,
     LIGHTHOUSE_EXEC_PATH: process.env.LIGHTHOUSE_EXEC_PATH,
     JBC_KEYGEN_EXEC_PATH: process.env.JBC_KEYGEN_EXEC_PATH,
+    JBC_SIREN_TEMP: process.env.JBC_SIREN_TEMP,
     VC_DEPLOY_TEMP: process.env.VC_DEPLOY_TEMP,
     VC_KEYS_PATH: process.env.VC_KEYS_PATH,
   });
@@ -150,7 +158,7 @@ ipcMain.on("getPaths", async (_ev, ...args) => {
 
 
 ipcMain.on("loadLighthouseApiData", async (_ev, ...args) => {
-  let response: LighhouseApiData;
+  let response: LighhouseApiData | undefined;
 
   try {
     const [dockerVersion, vcInstalled] = await Promise.all([
@@ -182,6 +190,9 @@ ipcMain.on("loadSirenApiData", async (_ev, ...args) => {
 
 generateKeysStatusEvent.on("status", (status) => {
   win?.webContents.send("generateKeysStatus", status);
+});
+generateKeysStatusEvent.on("terminalLogs", (log) => {
+  win?.webContents.send("terminalLogs", log);
 });
 
 ipcMain.on("generateKeys", async (_ev, ...args) => {
@@ -220,6 +231,9 @@ ipcMain.on("selectVcKeyFiles", async (_ev, ...args) => {
 deployValidatorsStatusEvent.on("status", (status) => {
   win?.webContents.send("deployValidatorsStatus", status);
 });
+deployValidatorsStatusEvent.on("terminalLogs", (log) => {
+  win?.webContents.send("terminalLogs", log);
+});
 
 ipcMain.on("deployValidators", async (_ev, ...args) => {
   const [keyFileContent, machinePublicIp, feeRecipientAddress, keyPassword, advanceSetting] = args as [string, string, string, string, string];
@@ -241,6 +255,9 @@ ipcMain.on("deployValidators", async (_ev, ...args) => {
 exitValidatorsStatusEvent.on("status", (status) => {
   win?.webContents.send("exitValidatorStatus", status);
 });
+exitValidatorsStatusEvent.on("terminalLogs", (log) => {
+  win?.webContents.send("terminalLogs", log);
+});
 
 ipcMain.on("exitValidator", async (_ev, ...args) => {
   const [pubkey, keyPassword] = args as [string, string];
@@ -258,6 +275,9 @@ ipcMain.on("exitValidator", async (_ev, ...args) => {
 deployJbcSirenStatusEvent.on("status", (status) => {
   win?.webContents.send("deployJbcSirenStatus", status);
 })
+deployJbcSirenStatusEvent.on("terminalLogs", (log) => {
+  win?.webContents.send("terminalLogs", log);
+});
 
 ipcMain.on("deployJbcSiren", async (_ev, ...args) => {
   const [port] = args as [string];

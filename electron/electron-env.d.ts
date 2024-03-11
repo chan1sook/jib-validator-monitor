@@ -13,6 +13,7 @@ declare namespace NodeJS {
     VC_DEPLOY_TEMP: string
     JBC_SIREN_TEMP: string
     VC_KEYS_PATH: string
+    OVERRIDE_CHECK_FILES: undefined | string
   }
 }
 

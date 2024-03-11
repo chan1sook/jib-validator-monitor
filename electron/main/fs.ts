@@ -1,5 +1,7 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import crypto from "node:crypto";
 import { programConfigPath } from "./constant";
 
 export async function isFileExists(pathlike:string) {
@@ -12,6 +14,26 @@ export async function isFileExists(pathlike:string) {
   }
 }
 
+// Function to calculate the hash of a file using a specific algorithm
+export function calculateHash(filePath:string, algorithm = "sha256") {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash(algorithm);
+    const stream = createReadStream(filePath);
+
+    stream.on('data', (data) => hash.update(data));
+    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('error', (error) => reject(error));
+  });
+}
+
+export async function isFileValid(pathlike:string, checksum:string) {
+  if(!(await isFileExists(pathlike))) {
+    return false;
+  }
+  return await calculateHash(pathlike) === checksum;
+}
+
+// ### read key file
 export async function readKeyFiles(filePaths: string[]) {
   const contents : Record<string, string> = {};
   for(const file of filePaths) {

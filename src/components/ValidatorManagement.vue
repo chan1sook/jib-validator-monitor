@@ -105,7 +105,8 @@
                         </td>
                         <td class="px-4 py-2">
                           <div class="inline-flex flex-row gap-x-2">
-                            <abbr :title="validator.voting_pubkey">{{ trimPubKey(validator.voting_pubkey, 12, 8) }}</abbr>
+                            <abbr :title="validator.voting_pubkey">{{ trimPubKey(validator.voting_pubkey, 12, 8)
+                              }}</abbr>
                             <span title="Copy Pubkey">
                               <ClipboardDocumentListIcon class="w-4 h-4 cursor-pointer"
                                 @click="copyText(validator.voting_pubkey)" />
@@ -135,6 +136,7 @@
                 </div>
               </template>
             </template>
+
             <template v-else>
               <div class="italic text-center">Validator Not Running</div>
               <div class="flex flex-row justify-center">
@@ -147,6 +149,7 @@
         </template>
         <LightModal v-if="exitValidatorTarget" @confirm="exitValidator(exitValidatorTarget)"
           @close="closeExitValidatorPopup" @cancel="closeExitValidatorPopup">
+
           <template #header>Confirm Voluntary exit</template>
           <form @submit.prevent="exitValidator(exitValidatorTarget)">
             <p class="text-base leading-relaxed text-red-900 dark:text-red-300">
@@ -173,6 +176,7 @@
               {{ getKeyPasswordError }}
             </p>
           </form>
+
           <template #footer="{ close }">
             <button type="button" class="transition duration-200 text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800
                   disabled:bg-red-200
@@ -191,12 +195,14 @@
         </LightModal>
 
         <LightModal v-if="exitVcError" @close="exitVcError = ''">
+
           <template #header>Error</template>
           <div class="break-all">
             {{ exitVcError }}
           </div>
         </LightModal>
         <LightModal v-if="exitVcResult" @close="exitVcResult = undefined">
+
           <template #header>Exit VC Successful</template>
           <div class=""></div>
           <div class="flex flex-col gap-y-1 items-start">
@@ -505,7 +511,7 @@ let onlineRefreshId: NodeJS.Timeout | undefined;
 
 onMounted(() => {
   window.ipcRenderer.on('loadLighthouseApiDataResponse', (_event, ...args) => {
-    const response: LighhouseApiData = args[0];
+    const response: LighhouseApiData | undefined = args[0];
     lighhouseApiData.value = response;
 
     mainBusy.value = false;
