@@ -33,7 +33,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     deployVcLogger.logDebug("Git", gitVersion);
     deployVcLogger.logDebug("tar", tarVerstion);
 
-    if (!dockerVersion || !gitVersion) {
+    if (!dockerVersion || !gitVersion || !tarVerstion) {
       let cmd = "";
 
       if (!dockerVersion) {

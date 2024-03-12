@@ -1,12 +1,12 @@
 import Event from "node:events";
 
-import { checkGitVersion, } from "./check-software";
+import { checkGitVersion, checkTarVersion, } from "./check-software";
 import { getChainConfigDir, getChainConfigGitSha256Checksum, getChainConfigPath, getLighhouseDownloadUrl, getLighhouseSha256Checksum, getLocalLighthousePath, isOverrideCheckFiles } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { getCustomLogger } from "./logger";
-import { calculateHash, isFileExists, isFileValid } from "./fs";
+import { calculateHash, isFileValid } from "./fs";
 
 export const exitValidatorsStatusEvent = new Event();
 
@@ -17,18 +17,31 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
     exitVcLogger.emitWithLog("Check Softwares");
 
     // check softwares
-    const [gitVersion] = await Promise.all([
+    const [gitVersion, tarVerstion] = await Promise.all([
       checkGitVersion(),
+      checkTarVersion(),
     ])
 
     exitVcLogger.logDebug("Git", gitVersion);
+    exitVcLogger.logDebug("tar", tarVerstion);
 
-    if (!gitVersion) {
+    if (!gitVersion || !tarVerstion) {
       let cmd = "";
-      if (!gitVersion) {
-        cmd += `apt-get update
-        apt-get install git -y
-        `;
+      if(!gitVersion || !tarVerstion) {
+        const aptPackages = [];
+        if (!gitVersion) {
+          aptPackages.push("git");
+        }
+
+        if (!tarVerstion) {
+          aptPackages.push("tar");
+        }
+
+        if(aptPackages.length > 0) {
+          cmd += `apt-get update
+          apt-get install ${aptPackages.join(' ')} -y
+          `;
+        }
       }
 
       exitVcLogger.emitWithLog("Install Softwares");
