@@ -71,7 +71,6 @@ export async function deployValidators(keyFileContent: Record<string, string>,
         }
       }
 
-
       deployVcLogger.emitWithLog("Install Softwares");
 
       deployVcLogger.injectExecTerminalLogs(
