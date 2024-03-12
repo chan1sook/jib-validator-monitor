@@ -146,11 +146,8 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
 
     exitVcLogger.emitWithLog("Exiting Validator");
 
-    // TODO run lighthouse account exit
-    // ./lighthouse account validator exit
-
     const exitVcPromise = new Promise((resolve, reject) => {
-    const exitVcProcess = spawnProcess("./lighthouse", [
+    const exitVcProcess = spawnProcess(lhFilePath, [
         "account",
         "validator",
         "exit",

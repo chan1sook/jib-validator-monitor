@@ -10,19 +10,48 @@ export function programConfigPath() {
 }
 
 //##### keygen
+const keygenFileMap : DownloadFileInfoMap = {
+  'x64': {
+    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit_amd64_x64",
+    sha256: "3fdeb6d8db3aa465345dd33cbd50afd25b23228518566ced4067c03a4f43b2e0",
+    location: "deposit"
+  },
+
+  'arm64': {
+    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit_arm64_rpi",
+    sha256: "65261815d4319299c3567f90b5664b424a35b7cab56dd301c6cf6948972e26e2",
+    location: "deposit"
+  },
+}
+
 export function getJbcDepositKeygenUrl() {
-  return "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit";
+  const keygenFileInfo = keygenFileMap[process.arch]
+  if (!keygenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return keygenFileInfo.url;
 }
 
 export function getJbcDepositSha256Checksum() {
-  return "3fdeb6d8db3aa465345dd33cbd50afd25b23228518566ced4067c03a4f43b2e0"
+  const keygenFileInfo = keygenFileMap[process.arch]
+  if (!keygenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return keygenFileInfo.sha256;
 }
 
 export function getLocalJbcDepositKeygenPath() {
-  return path.join(process.env.JBC_KEYGEN_EXEC_PATH, "deposit");
+  const keygenFileInfo = keygenFileMap[process.arch]
+  if (!keygenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return path.join(process.env.JBC_KEYGEN_EXEC_PATH, keygenFileInfo.location);
 }
 
-//##### chain config
+//##### chain configlocation: "staking_deposit-cli-fdab65d-linux-amd64/deposit"
 export function getChainConfigGitUrl() {
   return "https://github.com/jibchain-net/node.git";
 }
@@ -41,36 +70,44 @@ export function getChainConfigDir() {
 
 
 //##### lighthouse
-const lhInfoTable : Record<string, {url:string,sha256:string}> = {
+const lhFileMap : DownloadFileInfoMap = {
   'x64': {
     url: "https://github.com/sigp/lighthouse/releases/download/v5.1.0/lighthouse-v5.1.0-x86_64-unknown-linux-gnu-portable.tar.gz",
-    sha256: "6cea0139ed2573e7d695f1df70d5770c448e164a7411ec2eef898cdeb033b8d4"
+    sha256: "6cea0139ed2573e7d695f1df70d5770c448e164a7411ec2eef898cdeb033b8d4",
+    location: "lighthouse"
   },
   'arm64': {
     url: "https://github.com/sigp/lighthouse/releases/download/v5.1.0/lighthouse-v5.1.0-aarch64-unknown-linux-gnu-portable.tar.gz",
-    sha256: "cc166282f2d101563235a369216019b84b17a2049ab95158a3f2ac257c6705df"
+    sha256: "cc166282f2d101563235a369216019b84b17a2049ab95158a3f2ac257c6705df",
+    location: "lighthouse"
   }
 }
+
 export function getLighhouseDownloadUrl() {
-  const lhInfo = lhInfoTable[process.arch]
-  if (!lhInfo) {
+  const lhFileInfo = lhFileMap[process.arch]
+  if (!lhFileInfo) {
     throw new Error("Platform not support")
   }
 
-  return lhInfo.url;
+  return lhFileInfo.url;
 }
 
 export function getLighhouseSha256Checksum() {
-  const lhInfo = lhInfoTable[process.arch]
-  if (!lhInfo) {
+  const lhFileInfo = lhFileMap[process.arch]
+  if (!lhFileInfo) {
     throw new Error("Platform not support")
   }
 
-  return lhInfo.sha256;
+  return lhFileInfo.sha256;
 }
 
 export function getLocalLighthousePath() {
-  return path.join(process.env.LIGHTHOUSE_EXEC_PATH, "lighthouse");
+  const lhFileInfo = lhFileMap[process.arch]
+  if (!lhFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return path.join(process.env.LIGHTHOUSE_EXEC_PATH, lhFileInfo.location);
 }
 
 //##### vc

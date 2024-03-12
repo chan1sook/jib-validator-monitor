@@ -1,6 +1,6 @@
 {
   "name": "jib-validator-monitor",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "main": "dist-electron/main/index.js",
   "description": "JIB Validator Monitor",
   "author": "Natthawat Raocharoensinp",

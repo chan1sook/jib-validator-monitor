@@ -1,6 +1,6 @@
 import Event from "node:events";
 
-import { checkDockerVersion, checkGitVersion, } from "./check-software";
+import { checkDockerVersion, checkGitVersion, checkTarVersion, } from "./check-software";
 import { getChainConfigDir, getChainConfigGitSha256Checksum, getChainConfigGitUrl, getChainConfigPath, getLighhouseDownloadUrl, getLighhouseSha256Checksum, getLocalLighthousePath, isOverrideCheckFiles, lighthouseImageTag, validatorDockerComposeGroup, validatorDockerComposePath } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
@@ -23,13 +23,15 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     deployVcLogger.emitWithLog("Check Softwares");
 
     // check softwares
-    const [dockerVersion, gitVersion] = await Promise.all([
+    const [dockerVersion, gitVersion, tarVerstion] = await Promise.all([
       checkDockerVersion(),
       checkGitVersion(),
+      checkTarVersion(),
     ])
 
     deployVcLogger.logDebug("Docker", dockerVersion);
     deployVcLogger.logDebug("Git", gitVersion);
+    deployVcLogger.logDebug("tar", tarVerstion);
 
     if (!dockerVersion || !gitVersion) {
       let cmd = "";
@@ -52,11 +54,23 @@ export async function deployValidators(keyFileContent: Record<string, string>,
         `;
       }
 
-      if (!gitVersion) {
-        cmd += `apt-get update
-        apt-get install git -y
-        `;
+      if(!gitVersion || !tarVerstion) {
+        const aptPackages = [];
+        if (!gitVersion) {
+          aptPackages.push("git");
+        }
+
+        if (!tarVerstion) {
+          aptPackages.push("tar");
+        }
+
+        if(aptPackages.length > 0) {
+          cmd += `apt-get update
+          apt-get install ${aptPackages.join(' ')} -y
+          `;
+        }
       }
+
 
       deployVcLogger.emitWithLog("Install Softwares");
 
@@ -235,7 +249,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     }
 
     const importKeyPromise = new Promise<DeployKeyResult>((resolve, reject) => {
-      const importKeyProcess = spawnProcess("./lighthouse", [
+      const importKeyProcess = spawnProcess(lhFilePath, [
         "account",
         "validator",
         "import",

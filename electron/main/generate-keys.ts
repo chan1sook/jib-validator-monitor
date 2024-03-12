@@ -1,6 +1,6 @@
 import Event from "node:events";
 
-import { checkCurlVersion, checkGitVersion } from "./check-software";
+import { checkCurlVersion, checkGitVersion, checkTarVersion } from "./check-software";
 import { getJbcDepositKeygenUrl, getJbcDepositSha256Checksum, getLocalJbcDepositKeygenPath, isOverrideCheckFiles } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
@@ -53,13 +53,15 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       await isFileValid(keygenFilePath, getJbcDepositSha256Checksum());
 
     if(!isKeygenFileValid) {
-      generateKeyLogger.emitWithLog("Download JBC Deposit File");
+      generateKeyLogger.emitWithLog("Download Keygen File");
       try {
         await fs.rm(process.env.JBC_KEYGEN_EXEC_PATH, { recursive: true, force: true })
       } catch (err) {
 
       }
       await fs.mkdir(process.env.JBC_KEYGEN_EXEC_PATH, { recursive: true });
+
+      // download File
       generateKeyLogger.injectExecTerminalLogs(
         await basicExec("curl", [
           "-L",
@@ -105,7 +107,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       let cachedProcess = "";
       const exportPath = path.join(process.env.JBC_KEYGEN_EXEC_PATH, ".keys/validator_keys");
       
-      const genKeyProcess = spawnProcess("./deposit", [
+      const genKeyProcess = spawnProcess(keygenFilePath, [
         "--non_interactive",
         "new-mnemonic",
         `--num_validators=${qty}`,

@@ -1,6 +1,6 @@
 # JIB Validator Monitor
 
-Version 0.8.0
+Version 0.8.1
 
 ## Run as source code
 

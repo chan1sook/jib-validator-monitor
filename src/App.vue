@@ -10,7 +10,7 @@
     <div class="absolute l-0 r-0 b-0 w-full transform -translate-y-[100%] text-xs">
       <div class="px-1 py-1 cursor-pointer inline-block" @click="showLogs = !showLogs">Terminal Log</div>
       <div ref="logsDom" v-if="showLogs"
-        class="p-2 bg-black text-white font-mono whitespace-pre-wrap h-[100px] w-full overflow-y-auto">
+        class="p-2 bg-black text-white font-mono whitespace-pre-wrap h-[200px] w-full overflow-y-auto">
         {{ terminalLogs }}
       </div>
     </div>

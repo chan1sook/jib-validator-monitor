@@ -16,7 +16,6 @@ export async function checkDockerVersion(): Promise<string | undefined> {
   }
 }
 
-
 export async function checkCurlVersion(): Promise<string | undefined> {
   try {
     const { stdout } = await basicExec("curl", ["-V"]);
@@ -32,6 +31,21 @@ export async function checkCurlVersion(): Promise<string | undefined> {
   }
 }
 
+export async function checkTarVersion(): Promise<string | undefined> {
+  try {
+    const { stdout } = await basicExec("tar", ["--version"]);
+    
+    const result = /^tar \(GNU tar\) ([0-9\.]+)/.exec(stdout);
+
+    if (result) {
+      return result[1];
+    } else {
+      throw new Error("Not found");
+    }
+  } catch (err) {
+    return undefined;
+  }
+}
 
 export async function checkGitVersion(): Promise<string | undefined> {
   try {
