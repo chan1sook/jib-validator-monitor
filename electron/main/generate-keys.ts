@@ -1,7 +1,7 @@
 import Event from "node:events";
 
 import { checkCurlVersion, checkGitVersion, checkTarVersion } from "./check-software";
-import { getJbcDepositKeygenUrl, getJbcDepositSha256Checksum, getLocalJbcDepositKeygenPath, isOverrideCheckFiles } from "./constant";
+import { getJbcDepositKeygenUrl, getJbcDepositSha256Checksum, getLocalJbcDepositKeygenPath, getLocalJbcFileName, isOverrideCheckFiles } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -67,7 +67,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           "-L",
           getJbcDepositKeygenUrl(),
           "-o",
-          "deposit",
+          getLocalJbcFileName(),
         ], {
           cwd: process.env.JBC_KEYGEN_EXEC_PATH,
         }),
