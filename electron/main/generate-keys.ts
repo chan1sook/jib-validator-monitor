@@ -2,7 +2,7 @@ import Event from "node:events";
 
 import { checkCurlVersion, checkDockerVersion, checkGitVersion } from "./check-software";
 import { isOverrideCheckFiles, jbcKeygenGitUrl, jbcKeygenDockerfilePath} from "./constant";
-import { basicExec, spawnProcess, sudoExec } from "./exec";
+import { basicExec, spawnProcess, sudoExec, sudoSpawn } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { isFileExists } from "./fs";
@@ -111,8 +111,8 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     // create compose
     generateKeyLogger.emitWithLog("Build Dockerfile");
 
-    const buildDocker = new Promise<void>((resolve, reject) => {
-      const buildProcess = spawnProcess("sudo", ["docker",
+    const buildDocker = new Promise<void>(async (resolve, reject) => {
+      const buildProcess = await sudoSpawn("docker", [
         "build", "--pull", "-t", "jbc-keygen", process.env.JBC_KEYGEN_SCRIPT_PATH,
       ]);
 
@@ -143,11 +143,11 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     
     generateKeyLogger.emitWithLog("Generate Keys");
   
-    const genKey = new Promise<GenerateKeyResponse>((resolve, reject) => {
+    const genKey = new Promise<GenerateKeyResponse>(async (resolve, reject) => {
       let checkfileWorker : NodeJS.Timeout | undefined;
       let cachedProcess = "";
 
-      const genKeyProcess = spawnProcess("sudo", ["docker", 
+      const genKeyProcess = await sudoSpawn("docker", [
         "run",
         "-v",
         `${keysPath}:/app/validator_keys`,
