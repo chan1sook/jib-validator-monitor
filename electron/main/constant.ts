@@ -16,11 +16,12 @@ const keygenFileMap : DownloadFileInfoMap = {
     sha256: "3fdeb6d8db3aa465345dd33cbd50afd25b23228518566ced4067c03a4f43b2e0",
     location: "deposit_amd64_x64"
   },
-  'arm64': {
-    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit_arm64_rpi",
-    sha256: "e2eb9c8209c89f244c6eb76891d9a02dd41aa655d6f96a30b03479c6ea49e606",
-    location: "deposit_arm64_rpi"
-  },
+  // temp drop support
+  // 'arm64': {
+  //   url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit_arm64_rpi",
+  //   sha256: "e2eb9c8209c89f244c6eb76891d9a02dd41aa655d6f96a30b03479c6ea49e606",
+  //   location: "deposit_arm64_rpi"
+  // },
 }
 
 export function getJbcDepositKeygenUrl() {

@@ -70,10 +70,8 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           "-L",
           getJbcDepositKeygenUrl(),
           "-o",
-          keygenFileName,
-        ], {
-          cwd: process.env.JBC_KEYGEN_EXEC_PATH,
-        }),
+          keygenFilePath,
+        ]),
       );
 
       // set it excutable
