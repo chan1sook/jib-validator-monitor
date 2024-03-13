@@ -53,9 +53,7 @@ export async function deployJbcSiren(sirenPort: string) {
 
       deployJbcSirenLogger.emitWithLog("Install Softwares");
 
-      deployJbcSirenLogger.injectExecTerminalLogs(
-        await sudoExec(cmd)
-      );
+      await sudoExec(cmd, deployJbcSirenLogger.injectExecTerminalLogs);
 
       deployJbcSirenLogger.logDebug("Softwares Installed");
     };
@@ -129,9 +127,7 @@ export async function deployJbcSiren(sirenPort: string) {
     docker compose -p "${dockerComposeProjectGroup}" -f "${composePath}" up -d
     `;
 
-    deployJbcSirenLogger.injectExecTerminalLogs(
-      await sudoExec(installDockerScript)
-    );
+    await sudoExec(installDockerScript, deployJbcSirenLogger.injectExecTerminalLogs);
 
     const deployResult = {
       sirenPort: _sirenPort,

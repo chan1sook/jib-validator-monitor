@@ -54,28 +54,25 @@ export async function deployValidators(keyFileContent: Record<string, string>,
         `;
       }
 
-      if(!gitVersion || !tarVerstion) {
-        const aptPackages = [];
-        if (!gitVersion) {
-          aptPackages.push("git");
-        }
+      const sofewareNeeds = [];
 
-        if (!tarVerstion) {
-          aptPackages.push("tar");
-        }
+      if (!gitVersion) {
+        sofewareNeeds.push("git");
+      }
 
-        if(aptPackages.length > 0) {
-          cmd += `apt-get update
-          apt-get install ${aptPackages.join(' ')} -y
-          `;
-        }
+      if (!tarVerstion) {
+        sofewareNeeds.push("tar");
+      }
+
+      if(sofewareNeeds.length > 0) {
+        cmd += `apt-get update
+        apt-get install ${sofewareNeeds.join(' ')} -y
+        `;
       }
 
       deployVcLogger.emitWithLog("Install Softwares");
 
-      deployVcLogger.injectExecTerminalLogs(
-        await sudoExec(cmd)
-      );
+      await sudoExec(cmd, deployVcLogger.injectExecTerminalLogs);
 
       deployVcLogger.logDebug("Softwares Installed");
     }
@@ -332,16 +329,14 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     const dockerComposeProjectGroup = validatorDockerComposeGroup();
 
     
-    deployVcLogger.injectExecTerminalLogs(
-      await sudoExec(`docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" down
+    await sudoExec(`docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" down
       docker container rm -f jbc-validator
       cp -rf "${path.join(process.env.VC_DEPLOY_TEMP, "config")}" "${process.env.VC_KEYS_PATH}"
       rm -rf "${vcKeysCopyTargetPath}"
       mkdir -p "${vcKeysCopyTargetPath}"
       cp -rf ${vcKeyExportPath}/* "${vcKeysCopyTargetPath}"
       docker compose -p "${dockerComposeProjectGroup}" -f "${validatorDockerComposePath()}" up -d
-      `),
-    );
+    `, deployVcLogger.injectExecTerminalLogs);
 
     // Write Config
     deployVcLogger.emitWithLog("Get API Token");

@@ -8,5 +8,4 @@ Version 0.8.1
 
 ## Build file
 
-If can't run AppImage
-Run `sudo apt install libfuse2*` (https://askubuntu.com/questions/1403811/appimage-on-ubuntu-22-04)
+Build file not avaliable since 0.9.0
