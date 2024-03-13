@@ -1,7 +1,7 @@
 import Event from "node:events";
 
 import { checkGitVersion, checkTarVersion, } from "./check-software";
-import { getChainConfigDir, getChainConfigGitSha256Checksum, getChainConfigPath, getLighhouseDownloadUrl, getLighhouseSha256Checksum, getLocalLighthousePath, isOverrideCheckFiles } from "./constant";
+import { getChainConfigDir, getChainConfigGitSha256Checksum, getChainConfigGitUrl, getChainConfigPath, getLighhouseDownloadUrl, getLighhouseSha256Checksum, getLocalLighthousePath, isOverrideCheckFiles } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -77,7 +77,7 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
       exitVcLogger.injectExecTerminalLogs(
         await basicExec("git", [
           "clone",
-          "https://github.com/jibchain-net/node.git",
+          getChainConfigGitUrl(),
           process.env.VC_DEPLOY_TEMP,
         ]),
       );

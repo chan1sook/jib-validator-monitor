@@ -16,10 +16,9 @@ const keygenFileMap : DownloadFileInfoMap = {
     sha256: "3fdeb6d8db3aa465345dd33cbd50afd25b23228518566ced4067c03a4f43b2e0",
     location: "deposit_amd64_x64"
   },
-
   'arm64': {
     url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit_arm64_rpi",
-    sha256: "65261815d4319299c3567f90b5664b424a35b7cab56dd301c6cf6948972e26e2",
+    sha256: "e2eb9c8209c89f244c6eb76891d9a02dd41aa655d6f96a30b03479c6ea49e606",
     location: "deposit_arm64_rpi"
   },
 }
@@ -42,7 +41,7 @@ export function getJbcDepositSha256Checksum() {
   return keygenFileInfo.sha256;
 }
 
-export function getLocalJbcFileName() {
+export function getLocalJbcKeygenFileName() {
   const keygenFileInfo = keygenFileMap[process.arch]
   if (!keygenFileInfo) {
     throw new Error("Platform not support")
@@ -52,11 +51,10 @@ export function getLocalJbcFileName() {
 }
 
 export function getLocalJbcDepositKeygenPath() {
-  return path.join(process.env.JBC_KEYGEN_EXEC_PATH, getLocalJbcFileName());
+  return path.join(process.env.JBC_KEYGEN_EXEC_PATH, getLocalJbcKeygenFileName());
 }
 
-
-//##### chain configlocation: "staking_deposit-cli-fdab65d-linux-amd64/deposit"
+//##### chain configlocation
 export function getChainConfigGitUrl() {
   return "https://github.com/jibchain-net/node.git";
 }

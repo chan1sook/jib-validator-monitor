@@ -1,7 +1,7 @@
 import Event from "node:events";
 
 import { checkCurlVersion, checkGitVersion, checkTarVersion } from "./check-software";
-import { getJbcDepositKeygenUrl, getJbcDepositSha256Checksum, getLocalJbcDepositKeygenPath, getLocalJbcFileName, isOverrideCheckFiles } from "./constant";
+import { getJbcDepositKeygenUrl, getJbcDepositSha256Checksum, getLocalJbcDepositKeygenPath, getLocalJbcKeygenFileName, isOverrideCheckFiles } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -49,8 +49,11 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     generateKeyLogger.logInfo("JBC_KEYGEN_EXEC_PATH", process.env.JBC_KEYGEN_EXEC_PATH);
 
     const keygenFilePath = getLocalJbcDepositKeygenPath();
+    const keygenFileName = getLocalJbcKeygenFileName();
     const isKeygenFileValid = !isOverrideCheckFiles() && 
       await isFileValid(keygenFilePath, getJbcDepositSha256Checksum());
+
+    generateKeyLogger.logDebug(keygenFilePath, keygenFileName);
 
     if(!isKeygenFileValid) {
       generateKeyLogger.emitWithLog("Download Keygen File");
@@ -67,7 +70,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           "-L",
           getJbcDepositKeygenUrl(),
           "-o",
-          getLocalJbcFileName(),
+          keygenFileName,
         ], {
           cwd: process.env.JBC_KEYGEN_EXEC_PATH,
         }),
