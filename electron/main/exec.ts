@@ -21,29 +21,35 @@ export function sudoExec(
       for(const cmdLine of cmds) {
         const tokens = cmdLine.trim().split(/[\s\t]+/);
 
-        await new Promise(async (resolve2, reject2) => {
-          const p = await sudoer.spawn(
-            tokens[0], [tokens.slice(1).join(" ")],
-          );
+        if(tokens.length > 0 && tokens[0]) {
+          await new Promise(async (resolve2, reject2) => {
+            try {
+              const p = await sudoer.spawn(
+                tokens[0], [tokens.slice(1).join(" ")],
+              );
 
-          p.stdout.on("data", (data) => {
-            const dataStr = data.toString();
-            logCb({ stdout: dataStr, stderr: "",});
-            stdout += dataStr;
+              p.stdout.on("data", (data) => {
+                const dataStr = data.toString();
+                logCb({ stdout: dataStr, stderr: "",});
+                stdout += dataStr;
+              });
+
+              p.stderr.on("data", (data) => {
+                const dataStr = data.toString();
+                logCb({ stdout: "", stderr: dataStr,});
+                stderr += dataStr;
+              });
+
+              p.on("exit", (code, signal) => {
+                resolve2({ code, signal });
+              });
+
+              p.on("error", reject2);
+            } catch(err) {
+              reject2(err);
+            }
           });
-
-          p.stderr.on("data", (data) => {
-            const dataStr = data.toString();
-            logCb({ stdout: "", stderr: dataStr,});
-            stderr += dataStr;
-          });
-
-          p.on("exit", (code, signal) => {
-            resolve2({ code, signal });
-          });
-
-          p.on("error", reject2);
-        });
+        }
       };
 
       resolve({ stdout, stderr });

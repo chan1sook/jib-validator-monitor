@@ -1,8 +1,27 @@
 import path from "node:path";
+import getos from "getos"
 
 export function isOverrideCheckFiles() {
   return typeof process.env.OVERRIDE_CHECK_FILES !== "undefined"
 }
+
+export function getOsStr() : Promise<string> {
+  return new Promise((resolve, reject) => {
+    getos((err: Error | undefined , os: { os:string, dist: string}) => {
+      if(err) {
+        reject(err);
+      } else {
+        const baseOs = os.os.toLocaleLowerCase();
+        const distOs = os.dist.toLocaleLowerCase();
+        if(baseOs && distOs) {
+          resolve(`${baseOs}-${distOs}`)
+        } else {
+          resolve(baseOs);
+        }
+      }
+    })
+  })
+} 
 
 //##### config
 export function programConfigPath() {

@@ -39,6 +39,7 @@
     "colors": "^1.4.0",
     "dayjs": "^1.11.10",
     "ethers": "^6.10.0",
+    "getos": "^3.2.1",
     "jszip": "^3.10.1",
     "string-replace-all": "^2.0.0",
     "validator": "^13.11.0"

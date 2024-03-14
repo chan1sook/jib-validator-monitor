@@ -1,6 +1,6 @@
 import Event from "node:events";
 
-import { checkDockerVersion, checkGitVersion, checkTarVersion, } from "./check-software";
+import { checkDockerVersion, checkGitVersion, checkTarVersion, getDockerInstallCmd, } from "./check-software";
 import { getChainConfigDir, getChainConfigGitSha256Checksum, getChainConfigGitUrl, getChainConfigPath, getLighhouseDownloadUrl, getLighhouseSha256Checksum, getLocalLighthousePath, isOverrideCheckFiles, lighthouseImageTag, validatorDockerComposeGroup, validatorDockerComposePath } from "./constant";
 import { basicExec, spawnProcess, sudoExec } from "./exec";
 import path from "node:path";
@@ -20,6 +20,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
   advanceSetting: DeployKeyAdvanceSetting,
 ) {
   try {
+    getDockerInstallCmd()
     deployVcLogger.emitWithLog("Check Softwares");
 
     // check softwares
@@ -37,21 +38,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
       let cmd = "";
 
       if (!dockerVersion) {
-        cmd += // Add Docker's official GPG key:
-          `apt-get update
-        apt-get install ca-certificates curl gnupg -y
-        install -m 0755 -d /etc/apt/keyrings
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
-        chmod a+r /etc/apt/keyrings/docker.gpg
-        ` +
-          // Add the repository to Apt sources:
-          `echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-        $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-        tee /etc/apt/sources.list.d/docker.list > /dev/null
-        apt-get update
-        apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-        `;
+        cmd += await getDockerInstallCmd();
       }
 
       const sofewareNeeds = [];
