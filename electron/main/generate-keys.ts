@@ -2,7 +2,7 @@ import Event from "node:events";
 
 import { checkCurlVersion, checkDockerVersion, checkGitVersion } from "./check-software";
 import { isOverrideCheckFiles, jbcKeygenGitUrl, jbcKeygenDockerfilePath} from "./constant";
-import { basicExec, spawnProcess, sudoExec, sudoSpawn } from "./exec";
+import { basicExec, sudoExec, sudoSpawn } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { isFileExists } from "./fs";
