@@ -68,10 +68,8 @@ export async function deployJbcSiren(sirenPort: string) {
           "-L",
           getJbcSirenDownloadUrl(),
           "-o",
-          "jbc-siren.tar",
-        ], {
-          cwd: process.env.JBC_SIREN_TEMP,
-        }),
+          sirenImagePath,
+        ]),
       );
 
       deployJbcSirenLogger.logDebug("Image Downloaded");
@@ -109,7 +107,7 @@ export async function deployJbcSiren(sirenPort: string) {
     const installDockerScript = `docker compose -p "${dockerComposeProjectGroup}" -f "${composePath}" down
     docker container rm -f jbc-siren
     docker image rm -f jbc-siren
-    docker load -i "${getLocalJbcSirenDockerImagePath()}"
+    docker load -i "${sirenImagePath}"
     docker compose -p "${dockerComposeProjectGroup}" -f "${composePath}" up -d
     `;
 

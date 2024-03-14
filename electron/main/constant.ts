@@ -29,12 +29,44 @@ export function programConfigPath() {
 }
 
 //##### keygen
-export function jbcKeygenDockerfilePath() {
-  return path.join(process.env.JBC_KEYGEN_SCRIPT_PATH, "./Dockerfile");
+const keygenFileMap : DownloadFileInfoMap = {
+  'x64': {
+    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.1.0/jbc-keygen_x64.tar",
+    sha256: "f1950be73d7587bd0f005e1635e896049fcd2cf75492d6013cd809a5050e97a3",
+    location: "jbc-keygen.tar"
+  },
+  'arm64': {
+    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.1.0/jbc-keygen_arm64.tar",
+    sha256: "64295028060d85761956b91b30738df4ac2c06f356027ed218e5794b87c8b1c7",
+    location: "jbc-keygen.tar"
+  },
 }
 
-export function jbcKeygenGitUrl() {
-  return "https://github.com/chan1sook/jbc-deposit-cli.git"
+export function jbcKeygenImageDownloadUrl() {
+  const kygenFileInfo = keygenFileMap[process.arch]
+  if (!kygenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return kygenFileInfo.url;
+}
+
+export function jbcKeygenDockerImageSha256Checksum() {
+  const kygenFileInfo = keygenFileMap[process.arch]
+  if (!kygenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return kygenFileInfo.sha256;
+}
+
+export function jbcKeygenDockerImagePath() {
+  const kygenFileInfo = keygenFileMap[process.arch]
+  if (!kygenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return path.join(process.env.JBC_KEYGEN_TEMP_PATH, kygenFileInfo.location);
 }
 
 //##### chain configlocation
@@ -110,23 +142,47 @@ export function lighthouseImageTag() {
   return "sigp/lighthouse:v5.1.0"
 }
 
+
 //##### siren
+const sirenFileMap : DownloadFileInfoMap = {
+  'x64': {
+    url: "https://github.com/chan1sook/jbc-siren/releases/download/1.0.0/jbc-siren.tar",
+    sha256: "7653ec495ce8359f6e14a38f1538a435105bc19519eea9399f7e3c4428c9f10c",
+    location: "jbc-siren.tar"
+  },
+}
+
 export function jbcSirenDockerComposeGroup() {
   return "jbc-siren"
 }
 
 export function getJbcSirenDownloadUrl() {
-  return "https://github.com/chan1sook/jbc-siren/releases/download/1.0.0/jbc-siren.tar";
+  const sirenFileInfo = sirenFileMap[process.arch]
+  if (!sirenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return sirenFileInfo.url;
 }
 
 export function getJbcSirenSha256Checksum() {
-  return "7653ec495ce8359f6e14a38f1538a435105bc19519eea9399f7e3c4428c9f10c"
+  const sirenFileInfo = sirenFileMap[process.arch]
+  if (!sirenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return sirenFileInfo.sha256;
+}
+
+export function getLocalJbcSirenDockerImagePath() {
+  const sirenFileInfo = sirenFileMap[process.arch]
+  if (!sirenFileInfo) {
+    throw new Error("Platform not support")
+  }
+
+  return path.join(process.env.JBC_SIREN_TEMP, sirenFileInfo.location);
 }
 
 export function jbcSirenDockerComposePath() {
   return path.join(process.env.VC_KEYS_PATH, "jbc-siren.yaml");
-}
-
-export function getLocalJbcSirenDockerImagePath() {
-  return path.join(process.env.JBC_SIREN_TEMP, "jbc-siren.tar");
 }

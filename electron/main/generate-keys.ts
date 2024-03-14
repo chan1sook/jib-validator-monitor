@@ -1,11 +1,11 @@
 import Event from "node:events";
 
 import { checkCurlVersion, checkDockerVersion, checkGitVersion, getDockerInstallCmd } from "./check-software";
-import { isOverrideCheckFiles, jbcKeygenGitUrl, jbcKeygenDockerfilePath} from "./constant";
-import { basicExec, sudoExec, sudoSpawn } from "./exec";
+import { isOverrideCheckFiles, jbcKeygenDockerImagePath, jbcKeygenDockerImageSha256Checksum, jbcKeygenImageDownloadUrl } from "./constant";
+import { basicExec, spawnProcess, sudoExec, sudoSpawn } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { isFileExists } from "./fs";
+import { calculateHash, isFileExists, isFileValid } from "./fs";
 import { getCustomLogger } from "./logger";
 
 export const generateKeysStatusEvent = new Event();
@@ -59,71 +59,49 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
 
     generateKeyLogger.logInfo("JBC_KEYGEN_SCRIPT_PATH", process.env.JBC_KEYGEN_SCRIPT_PATH);
 
-    // Get keygen script data (and script)
-    const keygenDockerfilePath = jbcKeygenDockerfilePath();
-    const isKeygenDockerfileExists = !isOverrideCheckFiles() && await isFileExists(keygenDockerfilePath);
+    const keygenImagePath = jbcKeygenDockerImagePath();
+    const isKeygenImageValid = !isOverrideCheckFiles() && 
+      await isFileValid(keygenImagePath, jbcKeygenDockerImageSha256Checksum());
 
-    if(!isKeygenDockerfileExists) {
+    // Get keygen image file
+    if(!isKeygenImageValid) {
       try {
-        await fs.rm(process.env.JBC_KEYGEN_SCRIPT_PATH, { recursive: true, force: true, });
+        await fs.rm(process.env.JBC_KEYGEN_TEMP_PATH, {
+          recursive: true,
+          force: true,
+        });
       } catch (err) {
   
       }
-      await fs.mkdir(process.env.JBC_KEYGEN_SCRIPT_PATH, { recursive: true });
-
-      // download git
-      generateKeyLogger.emitWithLog("Clone Jbc Depossit Script Git");
     
-      generateKeyLogger.injectExecTerminalLogs(
-        await basicExec("git", [
-          "clone",
-          jbcKeygenGitUrl(),
-          process.env.JBC_KEYGEN_SCRIPT_PATH,
-        ]),
-      );
-    } else {
-      generateKeyLogger.logDebug("Use Cached Script");
-    }
+      await fs.mkdir(process.env.JBC_KEYGEN_TEMP_PATH, { recursive: true });
 
-    // Clear old generated file
-    const keysPath = path.join(process.env.JBC_KEYGEN_SCRIPT_PATH, "validator_keys");
-    
-    const keyFolderExists = await isFileExists(keysPath) && (await fs.readdir(keysPath)).length > 0
-    if(keyFolderExists) {
-      await sudoExec(`rm -rf ${keysPath}`, generateKeyLogger.injectExecTerminalLogs);
-    }
+      generateKeyLogger.emitWithLog("Download Image");
 
-    await fs.mkdir(keysPath, { recursive: true });
-
-    try {
-      
-    } catch(err) {
-      console.error(err);
-    }
-    
-
-    // create compose
-    generateKeyLogger.emitWithLog("Build Dockerfile");
-
-    const buildDocker = new Promise<void>(async (resolve, reject) => {
-      try {
-        const buildProcess = await sudoSpawn("docker", [
-          "build", "--pull", "-t", "jbc-keygen", process.env.JBC_KEYGEN_SCRIPT_PATH,
-        ]);
-
+      // Create files
+      const downloadPromise = new Promise<void>((resolve, reject) => {
+        const downloadProcess = spawnProcess("curl", [
+          "-L",
+          jbcKeygenImageDownloadUrl(),
+          "-o",
+          keygenImagePath,
+        ], {
+          timeout: 60 * 60 * 1000,
+        })
+  
         let out = "";
-        buildProcess.stdout.on("data", (data) => {
+  
+        downloadProcess.stdin.on("data", (data) => {
           generateKeyLogger.injectTerminalLog(data.toString());
           out += data.toString();
-        });
-
-        buildProcess.stderr.on("data", (data) => {
-          out += data.toString();
-          generateKeyLogger.injectTerminalLog(data.toString());
         })
 
-        buildProcess.on("exit", async (code, signal) => {
-          console.log(out);
+        downloadProcess.stderr.on("data", (data) => {
+          generateKeyLogger.injectTerminalLog(data.toString());
+          out += data.toString();
+        })
+  
+        downloadProcess.on("exit", async (code, signal) => {
           if (code === 0) {
             resolve();
           } else {
@@ -131,14 +109,43 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
             const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);
             reject(err);
           }
-        });
-      } catch(err) {
-        reject(err);
-      }
-    });
+        })
+  
+        downloadProcess.on("error", (err) => {
+          console.error(err);
+          reject(err);
+        })
+      });
 
-    await buildDocker;
+      await downloadPromise;
+
+      generateKeyLogger.logDebug("Image Downloaded");
+
+      generateKeyLogger.logDebug("sha256", await calculateHash(keygenImagePath));
+    } else {
+      generateKeyLogger.logDebug("Use Cached File");
+    }
+
+     // Clear old generated file
+     const keysPath = path.join(process.env.JBC_KEYGEN_TEMP_PATH, "validator_keys");
     
+     const keyFolderExists = await isFileExists(keysPath) && (await fs.readdir(keysPath)).length > 0
+     if(keyFolderExists) {
+       await sudoExec(`rm -rf ${keysPath}`, generateKeyLogger.injectExecTerminalLogs);
+     }
+ 
+     await fs.mkdir(keysPath, { recursive: true });
+    
+    // deploy docker (Yay!)
+    generateKeyLogger.emitWithLog("Deploy Docker");
+
+    const installDockerScript = `docker image rm -f jbc-keygen
+      docker load -i ${keygenImagePath}
+      `;
+
+    await sudoExec(installDockerScript, generateKeyLogger.injectExecTerminalLogs);
+    
+    // create compose
     generateKeyLogger.emitWithLog("Generate Keys");
   
     const genKey = new Promise<GenerateKeyResponse>(async (resolve, reject) => {
