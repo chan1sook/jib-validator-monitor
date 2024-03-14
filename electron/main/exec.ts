@@ -66,3 +66,41 @@ export async function sudoSpawn(
 ) : Promise<any> {
   return await sudoer.spawn(command, [args.join(" ")], ...params);
 } 
+
+export function streamSpawn(
+  command: string,
+  args?: readonly string[],
+  options?: import('node:child_process').SpawnOptions,
+  logCb: ({stdout, stderr} : { stdout: string, stderr: string}) => void = () => {}
+  ) {
+  return new Promise<void>((resolve, reject) => {
+    const p = spawnProcess(command, args, options)
+
+    let out = "";
+    
+    p.stdin.on("data", (data) => {
+      logCb({ stdout: data.toString(), stderr: "",});
+      out += data.toString();
+    })
+
+    p.stderr.on("data", (data) => {
+      logCb({ stdout: "", stderr: data.toString(),});
+      out += data.toString();
+    })
+
+    p.on("exit", async (code, signal) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        const tokens = out.split('\n').filter((str) => !!str);
+        const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);
+        reject(err);
+      }
+    })
+
+    p.on("error", (err) => {
+      console.error(err);
+      reject(err);
+    })
+  });
+}

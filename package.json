@@ -37,6 +37,7 @@
     "@heroicons/vue": "^2.1.1",
     "@nathanielks/electron-sudo": "^4.0.15",
     "colors": "^1.4.0",
+    "compare-versions": "^6.1.0",
     "dayjs": "^1.11.10",
     "ethers": "^6.10.0",
     "getos": "^3.2.1",

@@ -1,11 +1,11 @@
 import Event from "node:events";
 
-import { checkCurlVersion, checkDockerVersion, checkGitVersion, getDockerInstallCmd } from "./check-software";
-import { isOverrideCheckFiles, jbcKeygenDockerImagePath, jbcKeygenDockerImageSha256Checksum, jbcKeygenImageDownloadUrl } from "./constant";
-import { basicExec, spawnProcess, sudoExec, sudoSpawn } from "./exec";
+import { checkCurlVersion, checkGitVersion, checkPipVersion, checkPythonVersion, getPipCmdName, getPythonCmdName } from "./check-software";
+import { jbcDepositGitUrl, jbcKeygenExecPath } from "./constant";
+import { basicExec, spawnProcess, streamSpawn, sudoExec, sudoSpawn } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { calculateHash, isFileExists, isFileValid } from "./fs";
+import { compareVersions } from 'compare-versions';
 import { getCustomLogger } from "./logger";
 
 export const generateKeysStatusEvent = new Event();
@@ -17,135 +17,181 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
     generateKeyLogger.emitWithLog("Check Softwares");
 
     // check softwares
-    const [dockerVersion, gitVersion, curlVersion] = await Promise.all([
-      checkDockerVersion(),
+    const [pythonVersion, pipVersion, gitVersion, curlVersion] = await Promise.all([
+      checkPythonVersion(),
+      checkPipVersion(),
       checkGitVersion(),
       checkCurlVersion(),
     ]);
 
-    generateKeyLogger.logDebug("Docker", dockerVersion);
+    generateKeyLogger.logDebug("Python", pythonVersion);
+    generateKeyLogger.logDebug("pip", pipVersion);
     generateKeyLogger.logDebug("Git", gitVersion);
     generateKeyLogger.logDebug("cURL", curlVersion);
 
 
-    if (!dockerVersion || !gitVersion || !curlVersion) {
-      let cmd = "";
+    const softwareNeeds = [];
 
-      if (!dockerVersion) {
-        cmd += await getDockerInstallCmd();
-      }
-
-      const sofewareNeeds: string[] = [];
-      if (!gitVersion) {
-        sofewareNeeds.push("git");
-      }
-
-      if (!curlVersion) {
-        sofewareNeeds.push("curl");
-      }
-
-      if (sofewareNeeds.length > 0) {
-        cmd += `apt-get update
-        apt-get install ${sofewareNeeds.join(' ')} -y
-        `
-      }
-
-      generateKeyLogger.emitWithLog("Install Softwares");
-
-      await sudoExec(cmd, generateKeyLogger.injectExecTerminalLogs);
-
-      generateKeyLogger.logDebug("Softwares Installed");
+    if (!pythonVersion) {
+      softwareNeeds.push(getPythonCmdName());
     }
 
-    generateKeyLogger.logInfo("JBC_KEYGEN_SCRIPT_PATH", process.env.JBC_KEYGEN_SCRIPT_PATH);
+    if (!pipVersion) {
+      softwareNeeds.push(getPythonCmdName() + "-pip");
+    }
 
-    const keygenImagePath = jbcKeygenDockerImagePath();
-    const isKeygenImageValid = !isOverrideCheckFiles() && 
-      await isFileValid(keygenImagePath, jbcKeygenDockerImageSha256Checksum());
+    if (!gitVersion) {
+      softwareNeeds.push("git");
+    }
 
-    // Get keygen image file
-    if(!isKeygenImageValid) {
-      try {
-        await fs.rm(process.env.JBC_KEYGEN_TEMP_PATH, {
-          recursive: true,
-          force: true,
-        });
-      } catch (err) {
+    if (!curlVersion) {
+      softwareNeeds.push("curl");
+    }
+
+    if(softwareNeeds.length > 0) {
+      generateKeyLogger.emitWithLog("Install Softwares");
+
+      await sudoExec(`apt-get update
+        apt-get install ${softwareNeeds.join(' ')} -y
+      `, generateKeyLogger.injectExecTerminalLogs)
+
+      generateKeyLogger.emitWithLog("Install Softwares");
+    }
+
+    generateKeyLogger.logInfo("JBC_KEYGEN_TEMP_PATH", process.env.JBC_KEYGEN_TEMP_PATH);
+
+    try {
+      await fs.rm(process.env.JBC_KEYGEN_TEMP_PATH, {
+        recursive: true,
+        force: true,
+      });
+    } catch (err) {
+
+    }
   
-      }
+    await fs.mkdir(process.env.JBC_KEYGEN_TEMP_PATH, { recursive: true });
+
+    generateKeyLogger.emitWithLog("Download Script");
+
+    generateKeyLogger.injectExecTerminalLogs(
+      await basicExec("git", [
+        "clone",
+        jbcDepositGitUrl(),
+        process.env.JBC_KEYGEN_TEMP_PATH,
+      ]),
+    );
+
+    // Clear old generated file
+    const keysPath = path.join(process.env.JBC_KEYGEN_TEMP_PATH, "validator_keys");
+    try {
+      await fs.rm(keysPath, {
+        recursive: true,
+        force: true,
+      });
+    } catch (err) {
+
+    }
+  
+    await fs.mkdir(keysPath, { recursive: true });
     
-      await fs.mkdir(process.env.JBC_KEYGEN_TEMP_PATH, { recursive: true });
+    // install python (Ugh)
+    generateKeyLogger.emitWithLog("Install Python");
 
-      generateKeyLogger.emitWithLog("Download Image");
+    await new Promise<void>(async (resolve, reject) => {
+      try {
+        const args = [
+          "install",
+          "-r",
+          path.join(process.env.JBC_KEYGEN_TEMP_PATH, "requirements.txt"),
+        ];
 
-      // Create files
-      const downloadPromise = new Promise<void>((resolve, reject) => {
-        const downloadProcess = spawnProcess("curl", [
-          "-L",
-          jbcKeygenImageDownloadUrl(),
-          "-o",
-          keygenImagePath,
-        ], {
+        if(compareVersions(pythonVersion, "3.11") >= 0) {
+          args.push("--break-system-packages")
+        }
+
+        const genKeyProcess = await sudoSpawn(getPipCmdName(), args , {
           timeout: 60 * 60 * 1000,
-        })
-  
+        });
+    
         let out = "";
-  
-        downloadProcess.stdin.on("data", (data) => {
+
+        genKeyProcess.stdout.on("data", (data) => {
           generateKeyLogger.injectTerminalLog(data.toString());
           out += data.toString();
         })
 
-        downloadProcess.stderr.on("data", (data) => {
+        genKeyProcess.stderr.on("data", (data) => {
           generateKeyLogger.injectTerminalLog(data.toString());
-          out += data.toString();
+          console.log(data.toString());
         })
-  
-        downloadProcess.on("exit", async (code, signal) => {
-          if (code === 0) {
-            resolve();
-          } else {
-            const tokens = out.split('\n').filter((str) => !!str);
-            const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);
+
+        genKeyProcess.on("exit", async (code, signal) => {
+          try {
+            if (code === 0) {
+              resolve();
+            } else {
+              const tokens = out.split('\n').filter((str) => !!str);
+              const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);
+              reject(err);
+            }
+          } catch(err) {
             reject(err);
           }
         })
-  
-        downloadProcess.on("error", (err) => {
-          console.error(err);
+
+        genKeyProcess.on("error", (err) => {
           reject(err);
+        });
+      } catch(err) {
+        reject(err);
+      }
+    });
+
+
+    await new Promise<void>(async (resolve, reject) => {
+      try {
+        const genKeyProcess = await sudoSpawn(getPythonCmdName(), [
+          path.join(process.env.JBC_KEYGEN_TEMP_PATH, "setup.py"),
+          "install"
+        ], {
+          timeout: 60 * 60 * 1000,
+        });
+    
+        let out = "";
+
+        genKeyProcess.stdout.on("data", (data) => {
+          generateKeyLogger.injectTerminalLog(data.toString());
+          out += data.toString();
         })
-      });
 
-      await downloadPromise;
+        genKeyProcess.stderr.on("data", (data) => {
+          generateKeyLogger.injectTerminalLog(data.toString());
+          console.log(data.toString());
+        })
 
-      generateKeyLogger.logDebug("Image Downloaded");
+        genKeyProcess.on("exit", async (code, signal) => {
+          try {
+            if (code === 0) {
+              resolve();
+            } else {
+              const tokens = out.split('\n').filter((str) => !!str);
+              const err = new Error(tokens[tokens.length - 1] || `Exit code:${code}`);
+              reject(err);
+            }
+          } catch(err) {
+            reject(err);
+          }
+        })
 
-      generateKeyLogger.logDebug("sha256", await calculateHash(keygenImagePath));
-    } else {
-      generateKeyLogger.logDebug("Use Cached File");
-    }
+        genKeyProcess.on("error", (err) => {
+          reject(err);
+        });
+      } catch(err) {
+        reject(err);
+      }
+    });
 
-     // Clear old generated file
-     const keysPath = path.join(process.env.JBC_KEYGEN_TEMP_PATH, "validator_keys");
-    
-     const keyFolderExists = await isFileExists(keysPath) && (await fs.readdir(keysPath)).length > 0
-     if(keyFolderExists) {
-       await sudoExec(`rm -rf ${keysPath}`, generateKeyLogger.injectExecTerminalLogs);
-     }
- 
-     await fs.mkdir(keysPath, { recursive: true });
-    
-    // deploy docker (Yay!)
-    generateKeyLogger.emitWithLog("Deploy Docker");
-
-    const installDockerScript = `docker image rm -f jbc-keygen
-      docker load -i ${keygenImagePath}
-      `;
-
-    await sudoExec(installDockerScript, generateKeyLogger.injectExecTerminalLogs);
-    
-    // create compose
+    // run script (yay)
     generateKeyLogger.emitWithLog("Generate Keys");
   
     const genKey = new Promise<GenerateKeyResponse>(async (resolve, reject) => {
@@ -153,13 +199,7 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
       let cachedProcess = "";
 
       try {
-        const genKeyProcess = await sudoSpawn("docker", [
-          "run",
-          "-v",
-          `${keysPath}:/app/validator_keys`,
-          "-i",
-          "--rm",
-          "jbc-keygen",
+        const genKeyProcess = spawnProcess("./deposit.sh", [
           "--non_interactive",
           "new-mnemonic",
           `--num_validators=${qty}`,
@@ -167,7 +207,9 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           "--chain=jib",
           `--eth1_withdrawal_address=${withdrawAddress}`,
           `--keystore_password=${keyPassword}`,
+          `--folder=${process.env.JBC_KEYGEN_TEMP_PATH}`,
         ], {
+          cwd: process.env.JBC_KEYGEN_TEMP_PATH,
           timeout: 60 * 60 * 1000,
         });
 
@@ -235,7 +277,6 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
           try {
             if (code === 0) {
               generateKeyLogger.logDebug("Read Keys");
-              await sudoExec(`chmod +r -R ${keysPath}`, generateKeyLogger.injectExecTerminalLogs);
 
               // read content
               const files = await fs.readdir(keysPath);

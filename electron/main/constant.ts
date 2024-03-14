@@ -29,44 +29,12 @@ export function programConfigPath() {
 }
 
 //##### keygen
-const keygenFileMap : DownloadFileInfoMap = {
-  'x64': {
-    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.1.0/jbc-keygen_x64.tar",
-    sha256: "f1950be73d7587bd0f005e1635e896049fcd2cf75492d6013cd809a5050e97a3",
-    location: "jbc-keygen.tar"
-  },
-  'arm64': {
-    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.1.0/jbc-keygen_arm64.tar",
-    sha256: "64295028060d85761956b91b30738df4ac2c06f356027ed218e5794b87c8b1c7",
-    location: "jbc-keygen.tar"
-  },
+export function jbcKeygenExecPath() {
+  return path.join(process.env.JBC_KEYGEN_TEMP_PATH, "./deposit.sh");
 }
 
-export function jbcKeygenImageDownloadUrl() {
-  const kygenFileInfo = keygenFileMap[process.arch]
-  if (!kygenFileInfo) {
-    throw new Error("Platform not support")
-  }
-
-  return kygenFileInfo.url;
-}
-
-export function jbcKeygenDockerImageSha256Checksum() {
-  const kygenFileInfo = keygenFileMap[process.arch]
-  if (!kygenFileInfo) {
-    throw new Error("Platform not support")
-  }
-
-  return kygenFileInfo.sha256;
-}
-
-export function jbcKeygenDockerImagePath() {
-  const kygenFileInfo = keygenFileMap[process.arch]
-  if (!kygenFileInfo) {
-    throw new Error("Platform not support")
-  }
-
-  return path.join(process.env.JBC_KEYGEN_TEMP_PATH, kygenFileInfo.location);
+export function jbcDepositGitUrl() {
+  return "https://github.com/chan1sook/jbc-deposit-cli.git"
 }
 
 //##### chain configlocation

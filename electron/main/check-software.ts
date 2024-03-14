@@ -94,6 +94,50 @@ export async function checkGitVersion(): Promise<string | undefined> {
   }
 }
 
+export function getPythonCmdName() {
+  return "python3";
+}
+
+export function getPipCmdName() {
+  return "pip3";
+}
+
+
+export async function checkPythonVersion(): Promise<string | undefined> {
+  try {
+    const { stdout } = await basicExec(getPythonCmdName(), ["--version"]);
+
+    const result = /^Python ([0-9\.]+)/.exec(stdout);
+    if (result) {
+      return result[1];
+    } else {
+      throw new Error("Not found");
+    }
+  } catch (err) {
+    console.error(err);
+
+    return undefined;
+  }
+}
+
+export async function checkPipVersion(): Promise<string | undefined> {
+  try {
+    const { stdout } = await basicExec("pip", ["--version"]);
+
+    const result = /^pip ([0-9\.]+)/.exec(stdout);
+    if (result) {
+      return result[1];
+    } else {
+      throw new Error("Not found");
+    }
+  } catch (err) {
+    console.error(err);
+
+    return undefined;
+  }
+}
+
+
 export async function checkVcInstalled() {
   try {
     const config = await readProgramConfig();

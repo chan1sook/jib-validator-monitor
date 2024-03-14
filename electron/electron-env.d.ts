@@ -9,7 +9,7 @@ declare namespace NodeJS {
     VITE_PUBLIC: string
     /** extra paths */
     LIGHTHOUSE_EXEC_PATH: string
-    JBC_KEYGEN_SCRIPT_PATH: string
+    JBC_KEYGEN_TEMP_PATH: string
     VC_DEPLOY_TEMP: string
     JBC_SIREN_TEMP: string
     VC_KEYS_PATH: string
