@@ -1,8 +1,8 @@
 import Event from "node:events";
 
 import { checkCurlVersion, checkGitVersion, checkPipVersion, checkPythonVersion, getPipCmdName, getPythonCmdName } from "./check-software";
-import { jbcDepositGitUrl, jbcKeygenExecPath } from "./constant";
-import { basicExec, spawnProcess, streamSpawn, sudoExec, sudoSpawn } from "./exec";
+import { jbcDepositGitUrl } from "./constant";
+import { basicExec, spawnProcess, sudoExec, sudoSpawn } from "./exec";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { compareVersions } from 'compare-versions';

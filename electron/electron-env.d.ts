@@ -19,6 +19,23 @@ declare namespace NodeJS {
 
 type DownloadFileInfoMap =  Record<string, {url:string,sha256:string,location:string}> 
 
+interface ExecOutput {
+  stdout: string,
+  stderr: string,
+}
+
+type SudoExecSignature = (
+  cmd: string,
+  logCb: (input: ExecOutput) => void
+) => Promise<ExecOutput>;
+
+type SudoSpawnSignature = (
+  command: string,
+  args?: readonly string[],
+  ...params: any
+) => Promise<ExecOutput>;
+
+
 interface GenerateKeyResponse {
   mnemonic: string
   exportPath: string
