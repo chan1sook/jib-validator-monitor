@@ -227,18 +227,6 @@ export async function generateKeys(qty: number, withdrawAddress: string, keyPass
             step += 1;
           }
 
-          if (step === 2 && out.includes("Repeat your execution address for confirmation.:")) {
-            out = "";
-            genKeyProcess.stdin.write(`${withdrawAddress}\n`);
-            step += 1;
-          }
-
-          if (step === 3 && out.includes("Repeat your keystore password for confirmation:")) {
-            out = "";
-            genKeyProcess.stdin.write(`${keyPassword}\n`);
-            step += 1;
-          }
-
           if (step === 2 && out.includes("Please type your mnemonic (separated by spaces) to confirm you have written it down. Note: you only need to enter the first 4 letters of each word if you'd prefer.")) {
             const token = out.split("This is your mnemonic (seed phrase). Write it down and store it safely. It is the ONLY way to retrieve your deposit.")[1]
             const token1 = token.split("Please type your mnemonic (separated by spaces) to confirm you have written it down. Note: you only need to enter the first 4 letters of each word if you'd prefer.")[0]
