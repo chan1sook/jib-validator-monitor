@@ -77,7 +77,7 @@ async function createWindow() {
     icon: join(process.env.VITE_PUBLIC, "jbc-badge.png"),
     webPreferences: {
       preload,
-      // devTools: false,
+      devTools: true,
     },
     autoHideMenuBar: true,
   });

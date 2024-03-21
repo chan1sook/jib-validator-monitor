@@ -36,6 +36,7 @@
   "dependencies": {
     "@heroicons/vue": "^2.1.1",
     "@nathanielks/electron-sudo": "^4.0.15",
+    "axios": "^1.6.8",
     "colors": "^1.4.0",
     "dayjs": "^1.11.10",
     "ethers": "^6.10.0",
