@@ -193,8 +193,6 @@ async function generateKey() {
 
     mainBusy.value = false;
   }
-
-  // window.ipcRenderer.send("generateKeys", nodeCount.value, withdrawAddress.value.trim(), keyPassword.value);
 }
 
 function toHome() {
