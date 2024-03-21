@@ -30,13 +30,13 @@
             @submit.prevent="generateKey">
             <div class="w-full">
               <label for="node-count" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
-                Number of Nodes:
+                Number of Nodes
               </label>
               <LightInput type="number" id="node-count" v-model.number="nodeCount" min="1" step="1" placeholder="1"
                 required :disabled="mainBusy" />
             </div>
             <div class="w-full">
-              <label for="withdraw-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+              <label for="withdraw-address" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                 Withdraw Address
               </label>
               <LightInput type="text" id="withdraw-address" v-model="withdrawAddress"
@@ -48,7 +48,7 @@
               </LightInput>
             </div>
             <div class="w-full">
-              <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+              <label for="password-address" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                 Key Password
               </label>
               <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
@@ -60,7 +60,7 @@
               </LightInput>
             </div>
             <div class="w-full">
-              <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+              <label for="password-address" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                 Confrim Key Password
               </label>
               <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="confirmKeyPassword"
@@ -74,7 +74,7 @@
             <div class="w-full self-start">
               <input id="advance-setting" type="checkbox" v-model="useCloud"
                 class="transition duration-200 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-              <label for="advance-setting" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+              <label for="advance-setting" class="ms-2 text-sm font-bold text-gray-900 dark:text-gray-300">
                 Use Cloud
               </label>
             </div>
@@ -215,7 +215,7 @@ function generateKey() {
   mainBusy.value = true;
   lastestError.value = "";
   keyGenerated.value = false;
-
+  12345678
   if (useCloud.value) {
     cloudGenerateKey();
   } else {

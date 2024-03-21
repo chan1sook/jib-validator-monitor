@@ -64,7 +64,7 @@
               </h4>
               <div class="w-full flex flex-col gap-y-1">
                 <div class="w-full">
-                  <label for="machine-public-ip" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <label for="machine-public-ip" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                     Machine Public IP
                   </label>
                   <LightInput type="text" id="machine-public-ip" v-model="machinePublicIp"
@@ -77,8 +77,7 @@
                   </LightInput>
                 </div>
                 <div class="w-full">
-                  <label for="fee-recipient-address"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <label for="fee-recipient-address" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                     Fee Recipient Address
                   </label>
                   <LightInput type="text" id="fee-recipient-address" v-model="feeRecipientAddress"
@@ -90,7 +89,7 @@
                   </LightInput>
                 </div>
                 <div class="w-full">
-                  <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <label for="password-address" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                     Key Password
                   </label>
                   <LightInput :type="showPassword ? 'text' : 'password'" id="password-address" v-model="keyPassword"
@@ -101,7 +100,7 @@
                   </LightInput>
                 </div>
                 <div class="w-full">
-                  <label for="password-address" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <label for="password-address" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                     Confrim Key Password
                   </label>
                   <LightInput :type="showPassword ? 'text' : 'password'" id="password-address"
@@ -116,20 +115,20 @@
               <div class="w-full self-start">
                 <input id="advance-setting" type="checkbox" v-model="showAdvanceSetting"
                   class="transition duration-200 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                <label for="advance-setting" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                <label for="advance-setting" class="ms-2 text-sm font-bold text-gray-900 dark:text-gray-300">
                   Advance Setting
                 </label>
               </div>
               <template v-if="showAdvanceSetting">
                 <div class="w-full self-start">
-                  <label for="graffiti" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <label for="graffiti" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                     Graffiti
                   </label>
                   <LightInput type="text" id="graffiti" v-model="advanceSetting.graffiti" placeholder="Graffiti"
                     :disabled="mainBusy" />
                 </div>
                 <div class="w-full">
-                  <label for="lighhouse-http-port" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <label for="lighhouse-http-port" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">
                     Lighhouse API Port
                   </label>
                   <LightInput type="text" id="vc-graffiti" v-model="advanceSetting.exposeLighhouseApiPort"
