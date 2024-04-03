@@ -37,7 +37,7 @@ export function jbcKeygenGitUrl() {
   return "https://github.com/chan1sook/jbc-deposit-cli.git"
 }
 
-//##### chain configlocation
+//##### chain config
 export function getChainConfigGitUrl() {
   return "https://github.com/jibchain-net/node.git";
 }
