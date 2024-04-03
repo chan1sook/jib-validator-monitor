@@ -25,30 +25,22 @@ export async function exitValidator(pubKey: string, keyPassword: string) {
     exitVcLogger.logDebug("Git", gitVersion);
     exitVcLogger.logDebug("tar", tarVerstion);
 
-    if (!gitVersion || !tarVerstion) {
-      let cmd = "";
-      if(!gitVersion || !tarVerstion) {
-        const aptPackages = [];
-        if (!gitVersion) {
-          aptPackages.push("git");
-        }
+    const softwareNeeds = [];
 
-        if (!tarVerstion) {
-          aptPackages.push("tar");
-        }
+    if (!gitVersion) {
+      softwareNeeds.push("git");
+    }
 
-        if(aptPackages.length > 0) {
-          cmd += `apt-get update
-          apt-get install ${aptPackages.join(' ')} -y
-          `;
-        }
-      }
+    if (!tarVerstion) {
+      softwareNeeds.push("tar");
+    }
 
+    if(softwareNeeds.length > 0) {
       exitVcLogger.emitWithLog("Install Softwares");
 
-      exitVcLogger.injectExecTerminalLogs(
-        await sudoExec(cmd)
-      );
+      await sudoExec(`apt-get update
+        apt-get install ${softwareNeeds.join(' ')} -y
+      `, exitVcLogger.injectExecTerminalLogs)
 
       exitVcLogger.logDebug("Softwares Installed");
     }

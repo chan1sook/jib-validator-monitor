@@ -8,32 +8,36 @@
         <h1 class="text-center font-bold text-2xl">
           JIB Validator Monitor
         </h1>
-        <div class="my-2 flex flex-row justify-center flex-wrap gap-4">
-          <HomeButton @click="generateKeys">
-            <KeyIcon class="w-8 h-8" />
-            <div class="text-sm text-center">Generate Keys</div>
-          </HomeButton>
-          <a href="https://staking.jibchain.net/en/upload-deposit-data" target="_blank" class="inline-block">
-            <HomeButton>
-              <WalletIcon class="w-8 h-8" />
-              <div class="text-sm text-center">Deposit Fund</div>
+        <LoadingContainer v-if="loading">
+        </LoadingContainer>
+        <template v-else>
+          <div class="my-2 flex flex-row justify-center flex-wrap gap-4">
+            <HomeButton @click="generateKeys">
+              <KeyIcon class="w-8 h-8" />
+              <div class="text-sm text-center">Generate Keys</div>
             </HomeButton>
-          </a>
-          <HomeButton @click="deployValidators">
-            <ArrowDownTrayIcon class="w-8 h-8" />
-            <div class="text-sm text-center">Deploy Validators</div>
-          </HomeButton>
-        </div>
-        <div class="my-2 flex flex-row justify-center flex-wrap gap-4">
-          <HomeButton @click="jbcSirenMonitor">
-            <TvIcon class="w-8 h-8" />
-            <div class="text-sm text-center">JBC Siren Monitor</div>
-          </HomeButton>
-          <HomeButton @click="validatorManagement">
-            <InformationCircleIcon class="w-8 h-8" />
-            <div class="text-sm text-center">Validators Managemnet</div>
-          </HomeButton>
-        </div>
+            <a href="https://staking.jibchain.net/en/upload-deposit-data" target="_blank" class="inline-block">
+              <HomeButton>
+                <WalletIcon class="w-8 h-8" />
+                <div class="text-sm text-center">Deposit Fund</div>
+              </HomeButton>
+            </a>
+            <HomeButton @click="deployValidators">
+              <ArrowDownTrayIcon class="w-8 h-8" />
+              <div class="text-sm text-center">Deploy Validators</div>
+            </HomeButton>
+          </div>
+          <div class="my-2 flex flex-row justify-center flex-wrap gap-4">
+            <HomeButton v-if="allowSiren" @click="jbcSirenMonitor">
+              <TvIcon class="w-8 h-8" />
+              <div class="text-sm text-center">JBC Siren Monitor</div>
+            </HomeButton>
+            <HomeButton @click="validatorManagement">
+              <InformationCircleIcon class="w-8 h-8" />
+              <div class="text-sm text-center">Validators Managemnet</div>
+            </HomeButton>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -43,11 +47,15 @@
 import HomeButton from "./HomeButton.vue"
 import { KeyIcon, WalletIcon, ArrowDownTrayIcon, InformationCircleIcon, TvIcon } from '@heroicons/vue/24/solid'
 
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
+import LoadingContainer from "./LoadingContainer.vue";
 
 const emit = defineEmits<{
   (e: 'setPage', v: string): void
 }>();
+
+const loading = ref(true);
+const allowSiren = ref(false);
 
 function generateKeys() {
   emit("setPage", "generateKeys");
@@ -67,10 +75,19 @@ function jbcSirenMonitor() {
 
 onMounted(() => {
   window.ipcRenderer.on('getPathsResponse', (_event, ...args) => {
-    console.log(args[0])
+    console.log("paths", args[0])
+  });
+
+
+  window.ipcRenderer.on('getFeatureConfigsResponse', (_event, ...args) => {
+    const [configs] = args as [FeatureConfigData];
+    console.log("features", configs);
+    allowSiren.value = configs.allowSiren;
+    loading.value = false;
   });
 
   window.ipcRenderer.send("getPaths");
+  window.ipcRenderer.send("getFeatureConfigs");
 })
 
 </script>

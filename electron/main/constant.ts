@@ -1,8 +1,27 @@
 import path from "node:path";
+import getos from "getos"
 
 export function isOverrideCheckFiles() {
   return typeof process.env.OVERRIDE_CHECK_FILES !== "undefined"
 }
+
+export function getOsStr() : Promise<string> {
+  return new Promise((resolve, reject) => {
+    getos((err: Error | undefined , os: { os:string, dist: string}) => {
+      if(err) {
+        reject(err);
+      } else {
+        const baseOs = os.os.toLocaleLowerCase();
+        const distOs = os.dist.toLocaleLowerCase();
+        if(baseOs && distOs) {
+          resolve(`${baseOs}-${distOs}`)
+        } else {
+          resolve(baseOs);
+        }
+      }
+    })
+  })
+} 
 
 //##### config
 export function programConfigPath() {
@@ -10,49 +29,12 @@ export function programConfigPath() {
 }
 
 //##### keygen
-const keygenFileMap : DownloadFileInfoMap = {
-  'x64': {
-    url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit_amd64_x64",
-    sha256: "3fdeb6d8db3aa465345dd33cbd50afd25b23228518566ced4067c03a4f43b2e0",
-    location: "deposit_amd64_x64"
-  },
-  // temp drop support
-  // 'arm64': {
-  //   url: "https://github.com/chan1sook/jbc-deposit-cli/releases/download/1.0.0/deposit_arm64_rpi",
-  //   sha256: "e2eb9c8209c89f244c6eb76891d9a02dd41aa655d6f96a30b03479c6ea49e606",
-  //   location: "deposit_arm64_rpi"
-  // },
+export function jbcKeygenDockerfilePath() {
+  return path.join(process.env.JBC_KEYGEN_SCRIPT_PATH, "./Dockerfile");
 }
 
-export function getJbcDepositKeygenUrl() {
-  const keygenFileInfo = keygenFileMap[process.arch]
-  if (!keygenFileInfo) {
-    throw new Error("Platform not support")
-  }
-
-  return keygenFileInfo.url;
-}
-
-export function getJbcDepositSha256Checksum() {
-  const keygenFileInfo = keygenFileMap[process.arch]
-  if (!keygenFileInfo) {
-    throw new Error("Platform not support")
-  }
-
-  return keygenFileInfo.sha256;
-}
-
-export function getLocalJbcKeygenFileName() {
-  const keygenFileInfo = keygenFileMap[process.arch]
-  if (!keygenFileInfo) {
-    throw new Error("Platform not support")
-  }
-
-  return keygenFileInfo.location;
-}
-
-export function getLocalJbcDepositKeygenPath() {
-  return path.join(process.env.JBC_KEYGEN_EXEC_PATH, getLocalJbcKeygenFileName());
+export function jbcKeygenGitUrl() {
+  return "https://github.com/chan1sook/jbc-deposit-cli.git"
 }
 
 //##### chain configlocation
