@@ -117,6 +117,7 @@ export async function deployValidators(keyFileContent: Record<string, string>,
     }
 
     // replacement of `make env`
+    await fs.mkdir(process.env.VC_KEYS_PATH, { recursive: true });
     const envContent = `## BOOTNODE Configuration\n` +
       `NETWORK_ID=8899\n` +
       `TARGET_PEERS=100\n` +
