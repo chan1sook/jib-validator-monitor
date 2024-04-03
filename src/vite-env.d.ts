@@ -36,6 +36,11 @@ interface DeployKeyResult {
   apiPort: number | undefined
 }
 
+
+interface FeatureConfigData {
+  allowSiren: boolean
+}
+
 interface ValidatorData {
   voting_pubkey: string
   description: string

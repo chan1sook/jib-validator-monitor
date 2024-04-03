@@ -156,6 +156,11 @@ ipcMain.on("getPaths", async (_ev, ...args) => {
   });
 });
 
+ipcMain.on("getFeatureConfigs", async (_ev, ...args) => {
+  win?.webContents.send("getFeatureConfigsResponse", {
+    allowSiren: process.arch === "x64",
+  });
+});
 
 ipcMain.on("loadLighthouseApiData", async (_ev, ...args) => {
   let response: LighhouseApiData | undefined;
