@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen flex flex-col">
+  <div class="h-full flex flex-col">
     <div class="w-full flex flex-row flex-wrap px-2 py-1 bg-white shadow-md border-b border-gray-200">
       <LightButton :disabled="mainBusy" @click="toHome">Back</LightButton>
       <LightButton v-if="!mainBusy" class="ml-auto" :disabled="mainBusy" @click="loadLighthouseSirenData">
@@ -50,7 +50,8 @@
                 </div>
                 <div class="my-4 flex flex-col gap-y-2">
                   <div class="w-full">
-                    <label for="lighhouse-http-port" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                    <label for="lighhouse-http-port"
+                      class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                       Lighhouse API Port
                     </label>
                     <LightInput type="text" id="vc-graffiti" v-model="sirenPort"

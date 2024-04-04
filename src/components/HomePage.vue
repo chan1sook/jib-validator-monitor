@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen flex flex-col">
+  <div class="h-full flex flex-col">
     <div class="flex-1 flex flex-col overflow-y-auto">
       <div class="px-4 py-4 my-auto flex flex-col justify-center gap-y-2">
         <div>

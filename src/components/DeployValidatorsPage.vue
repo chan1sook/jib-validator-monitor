@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen flex flex-col">
+  <div class="h-full flex flex-col">
     <div class="w-full flex flex-row flex-wrap px-2 py-1 bg-white shadow-md border-b border-gray-200">
       <div>
         <LightButton v-if="inputPage === 1 || deployResult" :disabled="mainBusy" @click="toHome">Back</LightButton>
